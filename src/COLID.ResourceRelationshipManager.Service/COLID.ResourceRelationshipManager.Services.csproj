@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="COLID.Graph" Version="2.0.145" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\COLID.ResourceRelationshipManager.Repositories\COLID.ResourceRelationshipManager.Repositories.csproj" />
+	  <ProjectReference Include="..\COLID.ResourceRelationshipManager.Common\COLID.ResourceRelationshipManager.Common.csproj" />
+  </ItemGroup>
+
+</Project>
