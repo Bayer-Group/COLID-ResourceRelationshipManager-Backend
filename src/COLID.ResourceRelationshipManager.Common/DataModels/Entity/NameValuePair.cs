@@ -7,5 +7,6 @@ namespace COLID.ResourceRelationshipManager.Common.DataModels
         public Guid NameValuePairId { get; set; }
         public string Name { get; set; }
         public string Value { get; set; }
+        public string ResourceType { get; set; }
     }
 }

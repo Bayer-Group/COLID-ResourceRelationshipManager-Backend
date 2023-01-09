@@ -1,12 +1,14 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using COLID.Graph.TripleStore.DataModels.Base;
+using COLID.ResourceRelationshipManager.Common.DataModels;
+using COLID.ResourceRelationshipManager.Common.DataModels.Entity;
+using COLID.ResourceRelationshipManager.Common.DataModels.NewTOs;
+using COLID.ResourceRelationshipManager.Common.DataModels.RequestDTOs;
+using COLID.ResourceRelationshipManager.Services.Interface;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using COLID.ResourceRelationshipManager.Services.Interface;
-using COLID.ResourceRelationshipManager.Common.DataModels;
-using COLID.Graph.TripleStore.DataModels.Base;
 
 namespace COLID.ResourceRelationshipManager.WebApi.Controllers
 {
@@ -35,8 +37,8 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
         /// <response code="200">Returns the list of graphs. If there are no graphs, an empty list is returned.</response>
         /// <response code="500">If an unexpected error occurs</response>
         [HttpGet("All")]
-        [ProducesResponseType(typeof(List<GraphMap>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(List<GraphMap>), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(List<RelationMap>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<RelationMap>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllGraphMaps(int limit = 10, int offset = 0)
         {
             var graphMaps = await _graphMapService.GetAllGraphMaps(limit, offset);
@@ -54,8 +56,8 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
         /// <response code="200">Returns the list of graphs. If there are no graphs, an empty list is returned.</response>
         /// <response code="500">If an unexpected error occurs</response>
         [HttpGet("GraphsForUser")]
-        [ProducesResponseType(typeof(List<GraphMap>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(List<GraphMap>), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(List<RelationMap>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<RelationMap>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetGraphMapForUser(string userName, int limit = 10, int offset = 0)
         {
             //TODO: Check if username passed here is the user requesting
@@ -74,8 +76,8 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
         /// <response code="200">Returns the list of graphs. If there are no graphs, an empty list is returned.</response>
         /// <response code="500">If an unexpected error occurs</response>
         [HttpGet("GraphsForResource")]
-        [ProducesResponseType(typeof(List<GraphMap>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(List<GraphMap>), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(List<RelationMap>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<RelationMap>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetGraphMapForResource(Uri pidUri)
         {
             var graphMaps = await _graphMapService.GetGraphMapForResource(pidUri);
@@ -87,46 +89,6 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
         }
 
         /// <summary>
-        /// Returns the graph of the given Id.
-        /// </summary>
-        /// <param name="id">The Id of a graph.</param>
-        /// <returns>A graph</returns>
-        /// <response code="200">Returns the graph of the given Id</response>
-        /// <response code="404">If no graph exists with the given Id</response>
-        /// <response code="500">If an unexpected error occurs</response>
-        [HttpGet]
-        [ProducesResponseType(typeof(GraphMap), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(GraphMap), StatusCodes.Status404NotFound)]
-        [ProducesResponseType(typeof(GraphMap), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetGraphMapById(string id)
-        {
-            var graphMap = await _graphMapService.GetGraphMapById(id);
-            if (graphMap == null)
-            {
-                return NotFound();
-            }
-            return Ok(graphMap);
-        }
-
-        /// <summary>
-        /// Creates a graph.
-        /// </summary>
-        /// <param name="graphMap">The new graph to create</param>
-        /// <returns>A newly created graph</returns>
-        /// <response code="201">Returns the newly created graph</response>
-        /// <response code="400">If the graph is invalid</response>
-        /// <response code="500">If an unexpected error occurs</response>
-        [HttpPut]
-        [ProducesResponseType(typeof(GraphMap), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(GraphMap), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(GraphMap), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> SaveGraphMap(GraphMap graphMap)
-        {
-            await _graphMapService.SaveGraphMap(graphMap);
-            return Ok(graphMap);
-        }
-
-        /// <summary>
         /// Fetch the resource(s) information
         /// </summary>
         /// <param name="resourceUris"></param>
@@ -135,12 +97,12 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
         /// <response code="400">If the resource is not found</response>
         /// <response code="500">If an unexpected error occurs</response>
         [HttpPost("FetchResources")]
-        [ProducesResponseType(typeof(List<ResourceDTO>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(List<ResourceDTO>), StatusCodes.Status404NotFound)]
-        [ProducesResponseType(typeof(List<ResourceDTO>), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(List<MapNodeTO>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<MapNodeTO>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(List<MapNodeTO>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetResources(List<Uri> resourceUris)
         {
-            var graphMap = await _graphMapService.GetResourcesFromTripleStore(resourceUris);
+            var graphMap = await _graphMapService.GetResources(resourceUris);
             if (graphMap?.Count == 0)
             {
                 return NotFound();
@@ -161,7 +123,7 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
         [ProducesResponseType(typeof(List<ResourceDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(List<ResourceDTO>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(List<ResourceDTO>), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetMapPage(Common.DataModels.Entity.GraphMapSearchDTO graphMapSearchDTO, string offset)
+        public async Task<IActionResult> GetMapPage(GraphMapSearchDTO graphMapSearchDTO, string offset)
         {
             int offsetNr = Int32.Parse(offset);
             var graphMaps = await _graphMapService.GetPageGraphMaps(graphMapSearchDTO, offsetNr);
@@ -207,7 +169,7 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
         [ProducesResponseType(typeof(Entity), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(Entity), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(Entity), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ManageResourceLinking(List<LinkResourceTypeDTO> linkResourceTypes)
+        public async Task<IActionResult> ManageResourceLinking(List<LinkResourceTypeDTOV2> linkResourceTypes)
         {
             var result = await _graphMapService.ManageResourceLinking(linkResourceTypes);
             if (result?.Count == 0)
@@ -218,24 +180,67 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
         }
 
         /// <summary>
-        /// Delete the graph
+        /// Creates a Relation Map
         /// </summary>
-        /// <param name="id"></param>
+        /// <param name="graphMapV2SaveDto">The new graph to create</param>
+        /// <returns>A newly created graph</returns>
+        /// <response code="201">Returns the newly created graph</response>
+        /// <response code="400">If the graph is invalid</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [HttpPut("SaveRelationMap")]
+        [ProducesResponseType(typeof(RelationMap), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(RelationMap), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(RelationMap), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SaveRelationMap(GraphMapV2SaveDto graphMapV2SaveDto)
+        {
+            var result = await _graphMapService.SaveRelationMap(graphMapV2SaveDto);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Delete the Relation Map
+        /// </summary>
+        /// <param name="relationMapId"></param>
         /// <returns></returns>
-        [HttpDelete("Delete")]
+        [HttpDelete("DeleteRelationMap")]
         [ProducesResponseType(typeof(Entity), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(Entity), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(Entity), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> DeleteGraphMap(string id)
+        public async Task<IActionResult> DeleteRelationMap(string relationMapId)
         {
-            var graphMap = await _graphMapService.GetGraphMapById(id);
-            if(graphMap == null)
+            var relationMap = await _graphMapService.DeleteNodesByRelationMapId(relationMapId);
+            if (relationMap == null)
             {
                 return NotFound();
             }
-            
-            await _graphMapService.DeleteGraphMap(graphMap);
-            return Ok(graphMap);
+            if (relationMap.Id == null)
+            {
+                return Forbid();
+            }
+            await _graphMapService.DeleteRelationMap(relationMap);
+            return Ok(relationMap);
+        }
+
+        /// <summary>
+        /// Returns the relation graph of the given Id.
+        /// </summary>
+        /// <param name="relationMapId">The Id of a relation map.</param>
+        /// <returns>A relation graph</returns>
+        /// <response code="200">Returns the graph of the given Id</response>
+        /// <response code="404">If no graph exists with the given Id</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [HttpGet("GetRelationMapById")]
+        [ProducesResponseType(typeof(GraphMapTO), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(GraphMapTO), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(GraphMapTO), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetRelationMapById(string relationMapId)
+        {
+            var relationMap = await _graphMapService.GetRelationMapById(relationMapId);
+            if (relationMap == null)
+            {
+                return NotFound();
+            }
+            return Ok(relationMap);
         }
     }
 }

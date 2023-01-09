@@ -36,6 +36,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         private readonly string RegistrationService_Link_Resources_Api;
         private readonly string RegistrationService_Unlink_Resources_Api;
         private readonly string RegistrationService_Metadata_InstantiableTypes;
+        private readonly string RegistrationService_Metadata_LinkTypes;
 
         /// <summary>
         /// 
@@ -65,6 +66,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
             RegistrationService_Metadata_InstantiableTypes = $"{baseUri}/api/v3/metadata/instantiableResources";
             RegistrationService_Link_Resources_Api = $"{baseUri}/api/v3/resource/addLink";
             RegistrationService_Unlink_Resources_Api = $"{baseUri}/api/v3/resource/removeLink";
+            RegistrationService_Metadata_LinkTypes = $"{baseUri}/api/v3/metadata/linkTypes";
         }
         /// <summary>
         /// 
@@ -149,7 +151,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// </summary>
         /// <param name="linkResourceDTO"></param>
         /// <returns></returns>
-        public async Task<Entity> LinkResource(LinkResourceTypeDTO linkResourceType, string requester)
+        public async Task<Entity> LinkResource(LinkResourceTypeDTOV2 linkResourceType, string requester)
         {
             using var httpClient = _clientFactory.CreateClient();
             var response = await AquireTokenAndSendToRegistrationService(httpClient,
@@ -157,7 +159,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                  string.Format("{0}?pidUri={1}&linkType={2}&pidUriToLink={3}&requester={4}",
                                 RegistrationService_Link_Resources_Api,
                                 linkResourceType.SourceUri,
-                                linkResourceType.LinkType.Value,
+                                linkResourceType.LinkType.Key,
                                 linkResourceType.TargetUri,
                                 requester
                             )
@@ -175,7 +177,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// </summary>
         /// <param name="unlinkResourceDTO"></param>
         /// <returns></returns>
-        public async Task<Entity> UnlinkResource(LinkResourceTypeDTO linkResourceType, string requester)
+        public async Task<Entity> UnlinkResource(LinkResourceTypeDTOV2 linkResourceType, string requester)
         {
             using var httpClient = _clientFactory.CreateClient();
             var response = await AquireTokenAndSendToRegistrationService(httpClient,
@@ -183,7 +185,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                 string.Format("{0}?pidUri={1}&linkType={2}&pidUriToUnLink={3}&returnTargetResource={4}&requester={5}",
                                 RegistrationService_Unlink_Resources_Api,
                                 linkResourceType.SourceUri,
-                                linkResourceType.LinkType.Value,
+                                linkResourceType.LinkType.Key,
                                 linkResourceType.TargetUri,
                                 false,
                                 requester
@@ -210,6 +212,29 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                     throw new System.Exception("Something went wrong while fetching eligible links from RegistrationService");
                 }
                 return JsonConvert.DeserializeObject<List<Entity>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
+            }
+        }
+
+        /// <summary>
+        /// Fetch a dictionary of all possible link types.
+        /// </summary>
+        /// <returns>Dictionary with all possible link types. Key = PID URI of link type, Value = label of that link type.</returns>
+        /// <exception cref="System.Exception">In case of errors</exception>
+        public async Task<Dictionary<string, string>> GetLinkTypes()
+        {
+            using(var httpClient = _clientFactory.CreateClient())
+            {
+                var response = await AquireTokenAndSendToRegistrationService(httpClient,
+                    HttpMethod.Get,
+                    $"{RegistrationService_Metadata_LinkTypes}",
+                    null
+                );
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new System.Exception("Something went wrong while fetching the list of all possible link types");
+                }
+                return JsonConvert.DeserializeObject<Dictionary<string, string>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
             }
         }
     }

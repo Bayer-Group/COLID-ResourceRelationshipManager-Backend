@@ -3,14 +3,16 @@ using System;
 using COLID.ResourceRelationshipManager.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace COLID.ResourceRelationshipManager.Repositories.Migrations
 {
     [DbContext(typeof(ResourceRelationshipManagerContext))]
-    partial class ResourceRelationshipManagerContextModelSnapshot : ModelSnapshot
+    [Migration("20220610104119_streamlined_Data_Model")]
+    partial class streamlined_Data_Model
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -25,7 +27,7 @@ namespace COLID.ResourceRelationshipManager.Repositories.Migrations
                         .HasMaxLength(36);
 
                     b.Property<string>("PIDUri")
-                        .HasColumnType("longtext CHARACTER SET utf8mb4");
+                        .HasColumnType("varchar(200) CHARACTER SET utf8mb4");
 
                     b.Property<Guid?>("RelationMapId")
                         .HasColumnType("char(36)")
@@ -51,8 +53,11 @@ namespace COLID.ResourceRelationshipManager.Repositories.Migrations
                         .HasColumnType("char(36)")
                         .HasMaxLength(36);
 
-                    b.Property<string>("Description")
+                    b.Property<string>("CreatedBy")
                         .HasColumnType("longtext CHARACTER SET utf8mb4");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTime>("ModifiedAt")
                         .HasColumnType("datetime(6)");
@@ -244,8 +249,8 @@ namespace COLID.ResourceRelationshipManager.Repositories.Migrations
 
             modelBuilder.Entity("COLID.ResourceRelationshipManager.Common.DataModels.Entity.Nodes", b =>
                 {
-                    b.HasOne("COLID.ResourceRelationshipManager.Common.DataModels.Entity.RelationMap", null)
-                        .WithMany("Nodes")
+                    b.HasOne("COLID.ResourceRelationshipManager.Common.DataModels.Entity.RelationMap", "RelationMap")
+                        .WithMany()
                         .HasForeignKey("RelationMapId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

@@ -3,14 +3,16 @@ using System;
 using COLID.ResourceRelationshipManager.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace COLID.ResourceRelationshipManager.Repositories.Migrations
 {
     [DbContext(typeof(ResourceRelationshipManagerContext))]
-    partial class ResourceRelationshipManagerContextModelSnapshot : ModelSnapshot
+    [Migration("20220809140838_descriptionColumnAddedInRelationMap")]
+    partial class descriptionColumnAddedInRelationMap
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -246,9 +248,7 @@ namespace COLID.ResourceRelationshipManager.Repositories.Migrations
                 {
                     b.HasOne("COLID.ResourceRelationshipManager.Common.DataModels.Entity.RelationMap", null)
                         .WithMany("Nodes")
-                        .HasForeignKey("RelationMapId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("RelationMapId");
                 });
 
             modelBuilder.Entity("COLID.ResourceRelationshipManager.Common.DataModels.MapLink", b =>

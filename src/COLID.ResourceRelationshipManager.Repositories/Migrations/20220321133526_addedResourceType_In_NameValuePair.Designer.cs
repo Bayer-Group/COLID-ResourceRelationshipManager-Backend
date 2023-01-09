@@ -3,70 +3,21 @@ using System;
 using COLID.ResourceRelationshipManager.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace COLID.ResourceRelationshipManager.Repositories.Migrations
 {
     [DbContext(typeof(ResourceRelationshipManagerContext))]
-    partial class ResourceRelationshipManagerContextModelSnapshot : ModelSnapshot
+    [Migration("20220321133526_addedResourceType_In_NameValuePair")]
+    partial class addedResourceType_In_NameValuePair
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "3.1.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
-
-            modelBuilder.Entity("COLID.ResourceRelationshipManager.Common.DataModels.Entity.Nodes", b =>
-                {
-                    b.Property<Guid?>("NodeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)")
-                        .HasMaxLength(36);
-
-                    b.Property<string>("PIDUri")
-                        .HasColumnType("longtext CHARACTER SET utf8mb4");
-
-                    b.Property<Guid?>("RelationMapId")
-                        .HasColumnType("char(36)")
-                        .HasMaxLength(36);
-
-                    b.Property<double>("xPosition")
-                        .HasColumnType("double");
-
-                    b.Property<double>("yPosition")
-                        .HasColumnType("double");
-
-                    b.HasKey("NodeId");
-
-                    b.HasIndex("RelationMapId");
-
-                    b.ToTable("Nodes");
-                });
-
-            modelBuilder.Entity("COLID.ResourceRelationshipManager.Common.DataModels.Entity.RelationMap", b =>
-                {
-                    b.Property<Guid?>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)")
-                        .HasMaxLength(36);
-
-                    b.Property<string>("Description")
-                        .HasColumnType("longtext CHARACTER SET utf8mb4");
-
-                    b.Property<DateTime>("ModifiedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("longtext CHARACTER SET utf8mb4");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("longtext CHARACTER SET utf8mb4");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("RelationMap");
-                });
 
             modelBuilder.Entity("COLID.ResourceRelationshipManager.Common.DataModels.GraphMap", b =>
                 {
@@ -240,15 +191,6 @@ namespace COLID.ResourceRelationshipManager.Repositories.Migrations
                     b.HasKey("NameValuePairId");
 
                     b.ToTable("NameValuePair");
-                });
-
-            modelBuilder.Entity("COLID.ResourceRelationshipManager.Common.DataModels.Entity.Nodes", b =>
-                {
-                    b.HasOne("COLID.ResourceRelationshipManager.Common.DataModels.Entity.RelationMap", null)
-                        .WithMany("Nodes")
-                        .HasForeignKey("RelationMapId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("COLID.ResourceRelationshipManager.Common.DataModels.MapLink", b =>

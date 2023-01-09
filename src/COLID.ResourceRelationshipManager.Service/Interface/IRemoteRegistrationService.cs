@@ -37,7 +37,7 @@ namespace COLID.ResourceRelationshipManager.Services.Interface
         /// <param name="linkResourceDTO"></param>
         /// <param name="requester"></param>
         /// <returns></returns>
-        Task<Entity> LinkResource(LinkResourceTypeDTO linkResourceDTO, string requester);
+        Task<Entity> LinkResource(LinkResourceTypeDTOV2 linkResourceDTO, string requester);
 
         /// <summary>
         /// 
@@ -45,12 +45,18 @@ namespace COLID.ResourceRelationshipManager.Services.Interface
         /// <param name="unlinkResourceDTO"></param>
         /// <param name="requester"></param>
         /// <returns></returns>
-        Task<Entity> UnlinkResource(LinkResourceTypeDTO unlinkResourceDTO, string requester);
+        Task<Entity> UnlinkResource(LinkResourceTypeDTOV2 unlinkResourceDTO, string requester);
         /// 
         /// </summary>
         /// <param name="linksInstantiableTypes"></param>
         /// <returns></returns>
         Task<List<Entity>> GetInstantiableLinks(List<Entity> linksInstantiableTypes);
+
         /// <summary>
+        /// Fetch a dictionary of all possible link types.
+        /// </summary>
+        /// <returns>Dictionary with all possible link types. Key = PID URI of link type, Value = label of that link type.</returns>
+        /// <exception cref="System.Exception">In case of errors</exception>
+        Task<Dictionary<string, string>> GetLinkTypes();
     }
 }

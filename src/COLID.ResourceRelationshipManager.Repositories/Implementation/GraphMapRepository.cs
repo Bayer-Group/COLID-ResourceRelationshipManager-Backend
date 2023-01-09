@@ -1,13 +1,12 @@
-﻿using System;
+﻿using COLID.Exception.Models;
+using COLID.ResourceRelationshipManager.Common.DataModels.Entity;
+using COLID.ResourceRelationshipManager.Repositories.Interface;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
-using COLID.ResourceRelationshipManager.Common.DataModels;
-using COLID.ResourceRelationshipManager.Repositories.Interface;
-using System.Threading.Tasks;
-using COLID.ResourceRelationshipManager.Common.DataModels.Entity;
-using System.Collections;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace COLID.ResourceRelationshipManager.Repositories.Implementation
 {
@@ -18,19 +17,21 @@ namespace COLID.ResourceRelationshipManager.Repositories.Implementation
         {
             _db = resourceRelationshipManagerContext;
         }
-        public async Task<IList<GraphMap>> GetAllGraphMaps(int limit, int offset)
+
+        public async Task<IList<RelationMap>> GetAllGraphMaps(int limit, int offset)
         {
-            var graphMaps = await _db.GraphMaps
+            var relationMaps = await _db.RelationMap
+                .Include(r => r.Nodes)
                 .OrderByDescending(o => o.ModifiedAt)
                 .Skip(offset)
                 .Take(limit)
                 .ToListAsync();
-            return graphMaps;
+            return relationMaps;
         }
 
-        public async Task<IList<GraphMap>> GetPageGraphMaps(GraphMapSearchDTO graphMapSearchDTO, int offset)
+        public async Task<IList<RelationMap>> GetPageGraphMaps(GraphMapSearchDTO graphMapSearchDTO, int offset)
         {
-            Expression<Func<GraphMap, IComparable>> keySelector = keySelector = (o => o.Name);
+            Expression<Func<RelationMap, IComparable>> keySelector = keySelector = (o => o.Name);
             if (graphMapSearchDTO.sortKey.Equals("modifiedBy"))
                 keySelector = o => o.ModifiedBy;
             if (graphMapSearchDTO.sortKey.Equals("modifiedAt"))
@@ -44,75 +45,112 @@ namespace COLID.ResourceRelationshipManager.Repositories.Implementation
             //    return new List<GraphMap>();
 
             if (graphMapSearchDTO.sortType.Equals("asc"))
-                return await _db.GraphMaps
+                return await _db.RelationMap
                     .Where(o => o.Name.ToLower().Contains(graphMapSearchDTO.nameFilter.Trim().ToLower()))
+                    .Include(r => r.Nodes)
                     .OrderBy(keySelector)
                     .Skip(offset)
                     .Take(graphMapSearchDTO.batchSize)
                     .ToListAsync();
             else
-                return await _db.GraphMaps
+                return await _db.RelationMap
                 .Where(o => o.Name.ToLower().Contains(graphMapSearchDTO.nameFilter.Trim().ToLower()))
+                .Include(r => r.Nodes)
                 .OrderByDescending(keySelector)
                 .Skip(offset)
                 .Take(graphMapSearchDTO.batchSize)
                 .ToListAsync();
         }
 
-        public async Task<IList<GraphMap>> GetGraphMapsForUser(string userId, int limit, int offset)
+        public async Task<IList<RelationMap>> GetGraphMapsForUser(string userId, int limit, int offset)
         {
-            var graphMaps = await _db.GraphMaps
+            var relationMap = await _db.RelationMap
                 .Where(g => g.ModifiedBy == userId)
                 .OrderByDescending(o => o.ModifiedAt)
                 .Skip(offset)
                 .Take(limit)
                 .ToListAsync();
-            return graphMaps;
+            return relationMap;
         }
-        public async Task<IList<GraphMap>> GetGraphMapForResource(Uri pidUri)
+
+        public async Task<IList<RelationMap>> GetGraphMapForResource(Uri pidUri)
         {
-            var graphMaps = await _db.GraphMaps
-                .Where(x=> x.MapNodes.Any(x=> x.PidUri == pidUri))
+            var relationMap = await _db.RelationMap
+                .Where(x=> x.Nodes.Any(x=> x.PIDUri == pidUri))
+                .Include(r => r.Nodes)
                 .ToListAsync();
-
-            return graphMaps;
+            return relationMap;
         }
-        public async Task<GraphMap> GetGraphMapById(string mapId)
+        
+        public async Task<RelationMap> GetRelationMapByName(string relationMapName)
         {
-            var graphMap = await _db.GraphMaps
-                .Where(g => g.GraphMapId == Guid.Parse(mapId))
-                .Include(x => x.MapNodes).ThenInclude(x => x.Links).ThenInclude(x => x.Type) //include maplinkinfo
-                .Include(x => x.MapNodes).ThenInclude(x => x.Links).ThenInclude(x => x.StartNode) //include maplinkinfo
-                .Include(x => x.MapNodes).ThenInclude(x => x.Links).ThenInclude(x => x.EndNode) //include maplinkinfo
-                .Include(x => x.MapLinks).ThenInclude(x => x.Name)
+            var relationMap = await _db.RelationMap
+                .Where(g => g.Name == (string.IsNullOrEmpty(relationMapName) ? string.Empty : relationMapName.Trim()))
                 .FirstOrDefaultAsync();
 
-            //loadEntities(graphMap?.rootNode?.Links);
-            return graphMap;
+            return relationMap;
         }
-        public async Task<GraphMap> GetGraphMapByName(string mapName)
-        {
-            var graphMap = await _db.GraphMaps
-                .Where(g => g.Name == (string.IsNullOrEmpty(mapName) ? string.Empty : mapName.Trim()))
-                .FirstOrDefaultAsync();
 
-            //loadEntities(graphMap?.rootNode?.Links);
-            return graphMap;
-        }
-        public async Task SaveGraphMap(GraphMap graphMap)
+        public async Task<Guid?> SaveRelationMap(RelationMap relationMapReqDto)
         {
-            //TODO: Ensure that all objects in the hierarchy are being saved (recursion?)
-            if (graphMap.GraphMapId == null || graphMap.GraphMapId == Guid.Empty)
-                _db.GraphMaps.Add(graphMap);
+            if (relationMapReqDto.Id == null || relationMapReqDto.Id == Guid.Empty)
+            {
+                _db.RelationMap.Add(relationMapReqDto);
+                await _db.SaveChangesAsync();
+            }
             else
-                _db.GraphMaps.Update(graphMap);
-            await _db.SaveChangesAsync();
+            {
+                var currentRelationMap = _db.RelationMap
+                .Include(x => x.Nodes)
+                .FirstOrDefault(x => x.Id == relationMapReqDto.Id);
+
+                if (currentRelationMap.ModifiedBy == relationMapReqDto.ModifiedBy)
+                {
+                    await this.DeleteNodesByRelationMapId(currentRelationMap.Id); // removing existing nodes
+
+                    foreach (var node in relationMapReqDto.Nodes)
+                    {
+                        // adding updated nodes
+                        currentRelationMap.Nodes.Add(new Nodes() { PIDUri = node.PIDUri, RelationMapId = currentRelationMap.Id, xPosition = node.xPosition, yPosition = node.yPosition });
+                    }
+                    currentRelationMap.Description = relationMapReqDto.Description;
+                    currentRelationMap.Name = relationMapReqDto.Name;
+                    currentRelationMap.ModifiedAt = relationMapReqDto.ModifiedAt;
+
+                    _db.RelationMap.Update(currentRelationMap);
+                    await _db.SaveChangesAsync();
+                } else
+                {
+                    throw new BusinessException(message: $"Forbidden Error!");
+                }
+            }
+            Guid? lastInsertedRelationMapId = relationMapReqDto.Id;
+            return lastInsertedRelationMapId;
         }
-        public async Task DeleteGraphMap(GraphMap graphMap)
+        
+        public async Task<RelationMap> GetRelationMapById(string relationMapId)
         {
-            _db.Remove(graphMap);
+            var relationMap = await _db.RelationMap
+                .Where(r => r.Id == Guid.Parse(relationMapId))
+                .Include(r => r.Nodes)
+                .FirstOrDefaultAsync();
+
+            return relationMap;
+        }
+
+        public async Task DeleteNodesByRelationMapId(Guid? relationMapId)
+        {
+            var deleteNodes = await _db.Nodes.Where(n => n.RelationMapId == relationMapId).ToListAsync();
+            _db.RemoveRange(deleteNodes);
+            _db.SaveChanges();
+        }
+
+        public async Task DeleteRelationMap(RelationMap relationMap)
+        {
+            _db.Remove(relationMap);
             await _db.SaveChangesAsync();
         }
+
         //private void loadEntities(ICollection<MapLink> links)
         //{
         //    if (links == null)

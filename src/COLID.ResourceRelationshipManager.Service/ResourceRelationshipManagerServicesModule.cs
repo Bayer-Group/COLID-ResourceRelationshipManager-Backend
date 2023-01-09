@@ -22,7 +22,9 @@ namespace COLID.ResourceRelationshipManager.Services
                 throw new ArgumentNullException(nameof(services));
             }
             services.Configure<ColidRegistrationServiceTokenOptions>(configuration.GetSection("ColidRegistrationServiceTokenOptions"));
+            services.Configure<ColidSearchServiceTokenOptions>(configuration.GetSection("ColidSearchServiceTokenOptions"));
             services.AddTransient<IRemoteRegistrationService, RemoteRegistrationService>();
+            services.AddTransient<IRemoteSearchService, RemoteSearchService>();
             services.AddTransient<IUserInfoService, UserInfoService>();
             services.AddTransient<IGraphMapService, GraphMapService>();
             

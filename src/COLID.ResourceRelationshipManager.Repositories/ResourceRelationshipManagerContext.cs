@@ -17,6 +17,9 @@ namespace COLID.ResourceRelationshipManager.Repositories
         public virtual DbSet<GraphMap> GraphMaps { get; set; }
         public virtual DbSet<MapNode> MapNodes { get; set; }
         public virtual DbSet<MapLink> MapLinks { get; set; }
+        public virtual DbSet<RelationMap> RelationMap { get; set; }
+        public virtual DbSet<Nodes> Nodes { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -26,6 +29,8 @@ namespace COLID.ResourceRelationshipManager.Repositories
             modelBuilder.Entity<MapLink>().HasKey(m => m.MapLinkId);
             modelBuilder.Entity<MapLinkInfo>().HasKey(m => m.MapLinkInfoId);
             modelBuilder.Entity<NameValuePair>().HasKey(m => m.NameValuePairId);
+            modelBuilder.Entity<RelationMap>().HasKey(m => m.Id);
+            modelBuilder.Entity<Nodes>().HasKey(m => m.NodeId);
 
             modelBuilder.Entity<MapLinkInfo>()
                 .Property(x => x.Status)

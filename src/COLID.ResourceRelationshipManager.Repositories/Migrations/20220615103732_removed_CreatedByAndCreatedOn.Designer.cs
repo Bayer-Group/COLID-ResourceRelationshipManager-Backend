@@ -3,14 +3,16 @@ using System;
 using COLID.ResourceRelationshipManager.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace COLID.ResourceRelationshipManager.Repositories.Migrations
 {
     [DbContext(typeof(ResourceRelationshipManagerContext))]
-    partial class ResourceRelationshipManagerContextModelSnapshot : ModelSnapshot
+    [Migration("20220615103732_removed_CreatedByAndCreatedOn")]
+    partial class removed_CreatedByAndCreatedOn
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -19,17 +21,11 @@ namespace COLID.ResourceRelationshipManager.Repositories.Migrations
 
             modelBuilder.Entity("COLID.ResourceRelationshipManager.Common.DataModels.Entity.Nodes", b =>
                 {
-                    b.Property<Guid?>("NodeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)")
-                        .HasMaxLength(36);
-
                     b.Property<string>("PIDUri")
-                        .HasColumnType("longtext CHARACTER SET utf8mb4");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4");
 
-                    b.Property<Guid?>("RelationMapId")
-                        .HasColumnType("char(36)")
-                        .HasMaxLength(36);
+                    b.Property<Guid>("RelationMapId")
+                        .HasColumnType("char(36)");
 
                     b.Property<double>("xPosition")
                         .HasColumnType("double");
@@ -37,7 +33,7 @@ namespace COLID.ResourceRelationshipManager.Repositories.Migrations
                     b.Property<double>("yPosition")
                         .HasColumnType("double");
 
-                    b.HasKey("NodeId");
+                    b.HasKey("PIDUri", "RelationMapId");
 
                     b.HasIndex("RelationMapId");
 
@@ -48,11 +44,7 @@ namespace COLID.ResourceRelationshipManager.Repositories.Migrations
                 {
                     b.Property<Guid?>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)")
-                        .HasMaxLength(36);
-
-                    b.Property<string>("Description")
-                        .HasColumnType("longtext CHARACTER SET utf8mb4");
+                        .HasColumnType("char(36)");
 
                     b.Property<DateTime>("ModifiedAt")
                         .HasColumnType("datetime(6)");
@@ -244,8 +236,8 @@ namespace COLID.ResourceRelationshipManager.Repositories.Migrations
 
             modelBuilder.Entity("COLID.ResourceRelationshipManager.Common.DataModels.Entity.Nodes", b =>
                 {
-                    b.HasOne("COLID.ResourceRelationshipManager.Common.DataModels.Entity.RelationMap", null)
-                        .WithMany("Nodes")
+                    b.HasOne("COLID.ResourceRelationshipManager.Common.DataModels.Entity.RelationMap", "RelationMap")
+                        .WithMany()
                         .HasForeignKey("RelationMapId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

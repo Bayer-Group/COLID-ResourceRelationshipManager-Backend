@@ -46,7 +46,7 @@ namespace COLID.ResourceRelationshipManager.Repositories
             {
                 var logger = app.ApplicationServices.GetRequiredService<ILogger<DbContext>>();
                 logger.LogError(ex, "An error occured and the DB migration failed");
-                throw ex;
+                //throw ex;
             }
         }
 
