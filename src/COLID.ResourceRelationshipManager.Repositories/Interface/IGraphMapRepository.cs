@@ -12,9 +12,9 @@ namespace COLID.ResourceRelationshipManager.Repositories.Interface
         Task<IList<RelationMap>> GetGraphMapsForUser(string userId, int limit, int offset);
         Task<IList<RelationMap>> GetGraphMapForResource(Uri pidUri);
         Task<RelationMap> GetRelationMapByName(string relationName);
-        Task<Guid?> SaveRelationMap(RelationMap relationMap);
+        Task<Guid> SaveRelationMap(RelationMap relationMap, bool isNew);
         Task<RelationMap> GetRelationMapById(string relationMapId);
-        Task DeleteNodesByRelationMapId(Guid? relationMapId);
+        Task DeleteNodesByRelationMapId(Guid relationMapId);
         Task DeleteRelationMap(RelationMap relationMap);
     }
 }

@@ -3,14 +3,16 @@ using System;
 using COLID.ResourceRelationshipManager.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace COLID.ResourceRelationshipManager.Repositories.Migrations
 {
     [DbContext(typeof(ResourceRelationshipManagerContext))]
-    partial class ResourceRelationshipManagerContextModelSnapshot : ModelSnapshot
+    [Migration("20230116162634_removeOldEntitiesAndSetRelationshipBetweenMapAndNodes")]
+    partial class removeOldEntitiesAndSetRelationshipBetweenMapAndNodes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

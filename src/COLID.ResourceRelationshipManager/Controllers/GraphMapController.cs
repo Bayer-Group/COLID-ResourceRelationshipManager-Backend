@@ -1,9 +1,11 @@
 ﻿using COLID.Graph.TripleStore.DataModels.Base;
+using COLID.Identity.Requirements;
 using COLID.ResourceRelationshipManager.Common.DataModels;
 using COLID.ResourceRelationshipManager.Common.DataModels.Entity;
 using COLID.ResourceRelationshipManager.Common.DataModels.NewTOs;
 using COLID.ResourceRelationshipManager.Common.DataModels.RequestDTOs;
 using COLID.ResourceRelationshipManager.Services.Interface;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -204,20 +206,52 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
         /// <returns></returns>
         [HttpDelete("DeleteRelationMap")]
         [ProducesResponseType(typeof(Entity), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Entity), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(Entity), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(Entity), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteRelationMap(string relationMapId)
         {
-            var relationMap = await _graphMapService.DeleteNodesByRelationMapId(relationMapId);
+            var relationMap = await _graphMapService.GetPlainRelationMapById(relationMapId);
+
             if (relationMap == null)
             {
                 return NotFound();
             }
-            if (relationMap.Id == null)
+
+            bool deletionSuccessful = await _graphMapService.DeleteRelationMap(relationMap);
+
+            if (!deletionSuccessful)
             {
-                return Forbid();
+                return new ObjectResult("You don't have the rights to delete this map")
+                {
+                    StatusCode = 403
+                };
             }
-            await _graphMapService.DeleteRelationMap(relationMap);
+
+            return Ok(relationMap);
+        }
+
+        /// <summary>
+        /// Delete the Relation Map As An Admin
+        /// </summary>
+        /// <param name="relationMapId"></param>
+        /// <returns></returns>
+        [HttpDelete("DeleteRelationMapAsSuperAdmin")]
+        [Authorize(Policy = nameof(SuperadministratorRequirement))]
+        [ProducesResponseType(typeof(Entity), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Entity), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(Entity), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeleteRelationMapAsSuperAdmin(string relationMapId)
+        {
+            var relationMap = await _graphMapService.GetPlainRelationMapById(relationMapId);
+
+            if (relationMap == null)
+            {
+                return NotFound();
+            }
+
+            await _graphMapService.DeleteRelationMap(relationMap, true);
+
             return Ok(relationMap);
         }
 

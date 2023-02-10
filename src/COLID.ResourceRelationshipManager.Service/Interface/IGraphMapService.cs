@@ -77,24 +77,24 @@ namespace COLID.ResourceRelationshipManager.Services.Interface
         Task<RelationMap> GetRelationMapByName(string relationMapName);
 
         /// <summary>
+        /// Get Plain Relation Map By Id
+        /// </summary>
+        /// <param name="relationMapId"></param>
+        /// <returns></returns>
+        Task<RelationMap> GetPlainRelationMapById(string relationMapId);
+
+        /// <summary>
         /// Save Relation Map
         /// </summary>
         /// <param name="graphMapV2SaveDto"></param>
         Task<GraphMapTO> SaveRelationMap(GraphMapV2SaveDto graphMapV2SaveDto);
 
         /// <summary>
-        /// Delete Nodes By RelationMapId
-        /// </summary>
-        /// <param name="relationMapId"></param>
-        /// <returns></returns>
-        Task<RelationMap> DeleteNodesByRelationMapId(string relationMapId);
-
-        /// <summary>
         /// Delete Relation Map
         /// </summary>
         /// <param name="relationMap"></param>
         /// <returns></returns>
-        Task DeleteRelationMap(RelationMap relationMap);
+        Task<bool> DeleteRelationMap(RelationMap relationMap, bool isSuperAdmin = false);
 
         /// <summary>
         /// Get Relation Map By Id

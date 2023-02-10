@@ -31,35 +31,40 @@ namespace COLID.ResourceRelationshipManager.Repositories.Implementation
 
         public async Task<IList<RelationMap>> GetPageGraphMaps(GraphMapSearchDTO graphMapSearchDTO, int offset)
         {
-            Expression<Func<RelationMap, IComparable>> keySelector = keySelector = (o => o.Name);
-            if (graphMapSearchDTO.sortKey.Equals("modifiedBy"))
-                keySelector = o => o.ModifiedBy;
-            if (graphMapSearchDTO.sortKey.Equals("modifiedAt"))
-                keySelector = o => o.ModifiedAt.ToString();
-           
-            //(graphMapSearchDTO.sortKey.Equals("modifiedBy") ? (Expression<Func<GraphMap, DateTime>>)(o => o.ModifiedBy) : (Expression<Func<GraphMap, DateTime>>)(o => o.ModifiedAt));
-            //IComparer<IComparable> comparer = graphMapSearchDTO.sortType == "asc" ? Comparer<IComparable>.Create((a, b) => a.CompareTo(b)) : 
-            //    (graphMapSearchDTO.sortType == "des" ? Comparer<IComparable>.Create((a, b) => b.CompareTo(a)) : Comparer<IComparable>.Create((a, b) => 0));
+            Dictionary<string, dynamic> orderFunctions = new Dictionary<string, dynamic>
+            {
+                { "description", (Expression<Func<RelationMap, string>>)(x => x.Description) },
+                { "nodeCount", (Expression<Func<RelationMap, int>>)(x => x.Nodes.Count) },
+                { "date", (Expression<Func<RelationMap, DateTime>>)(x => x.ModifiedAt) },
+                { "creator", (Expression<Func<RelationMap, string>>)(x => x.ModifiedBy) }
+            };
 
-            //if (comparer.Compare("name1", "name2")==0) 
-            //    return new List<GraphMap>();
+            IQueryable<RelationMap> query = _db.RelationMap;
+
+            if (graphMapSearchDTO.nameFilter.Trim().Length != 0)
+            {
+                query = query.Where(m => m.Name.ToLower().Contains(graphMapSearchDTO.nameFilter.Trim().ToLower()));
+            }
+
+            query = query.Include(m => m.Nodes);
 
             if (graphMapSearchDTO.sortType.Equals("asc"))
-                return await _db.RelationMap
-                    .Where(o => o.Name.ToLower().Contains(graphMapSearchDTO.nameFilter.Trim().ToLower()))
-                    .Include(r => r.Nodes)
-                    .OrderBy(keySelector)
-                    .Skip(offset)
-                    .Take(graphMapSearchDTO.batchSize)
-                    .ToListAsync();
-            else
-                return await _db.RelationMap
-                .Where(o => o.Name.ToLower().Contains(graphMapSearchDTO.nameFilter.Trim().ToLower()))
-                .Include(r => r.Nodes)
-                .OrderByDescending(keySelector)
+            {
+                query = Queryable.OrderBy(query, orderFunctions[graphMapSearchDTO.sortKey]);
+            }
+
+            if (graphMapSearchDTO.sortType.Equals("desc"))
+            {
+                query = Queryable.OrderByDescending(query, orderFunctions[graphMapSearchDTO.sortKey]);
+            }
+
+            query = query
                 .Skip(offset)
-                .Take(graphMapSearchDTO.batchSize)
-                .ToListAsync();
+                .Take(graphMapSearchDTO.batchSize);
+
+            var result = await query.ToListAsync();
+
+            return result;
         }
 
         public async Task<IList<RelationMap>> GetGraphMapsForUser(string userId, int limit, int offset)
@@ -91,9 +96,9 @@ namespace COLID.ResourceRelationshipManager.Repositories.Implementation
             return relationMap;
         }
 
-        public async Task<Guid?> SaveRelationMap(RelationMap relationMapReqDto)
+        public async Task<Guid> SaveRelationMap(RelationMap relationMapReqDto, bool isNew)
         {
-            if (relationMapReqDto.Id == null || relationMapReqDto.Id == Guid.Empty)
+            if (isNew)
             {
                 _db.RelationMap.Add(relationMapReqDto);
                 await _db.SaveChangesAsync();
@@ -106,7 +111,7 @@ namespace COLID.ResourceRelationshipManager.Repositories.Implementation
 
                 if (currentRelationMap.ModifiedBy == relationMapReqDto.ModifiedBy)
                 {
-                    await this.DeleteNodesByRelationMapId(currentRelationMap.Id); // removing existing nodes
+                    await DeleteNodesByRelationMapId(currentRelationMap.Id); // removing existing nodes
 
                     foreach (var node in relationMapReqDto.Nodes)
                     {
@@ -124,8 +129,7 @@ namespace COLID.ResourceRelationshipManager.Repositories.Implementation
                     throw new BusinessException(message: $"Forbidden Error!");
                 }
             }
-            Guid? lastInsertedRelationMapId = relationMapReqDto.Id;
-            return lastInsertedRelationMapId;
+            return relationMapReqDto.Id;
         }
         
         public async Task<RelationMap> GetRelationMapById(string relationMapId)
@@ -138,7 +142,7 @@ namespace COLID.ResourceRelationshipManager.Repositories.Implementation
             return relationMap;
         }
 
-        public async Task DeleteNodesByRelationMapId(Guid? relationMapId)
+        public async Task DeleteNodesByRelationMapId(Guid relationMapId)
         {
             var deleteNodes = await _db.Nodes.Where(n => n.RelationMapId == relationMapId).ToListAsync();
             _db.RemoveRange(deleteNodes);
@@ -150,21 +154,5 @@ namespace COLID.ResourceRelationshipManager.Repositories.Implementation
             _db.Remove(relationMap);
             await _db.SaveChangesAsync();
         }
-
-        //private void loadEntities(ICollection<MapLink> links)
-        //{
-        //    if (links == null)
-        //        return;
-
-        //    foreach (var link in links)
-        //    {
-        //        _db.Entry<MapLink>(link).Reference(e => e.targetNode).Load();
-        //        var node = link.targetNode;
-        //        if (node == null) break;
-        //        _db.Entry<MapNode>(node).Collection(e => e.Links).Load();
-        //        if (node.Links == null || node.Links.Count == 0) break;
-        //        loadEntities(node.Links);
-        //    }
-        //}
     }
 }

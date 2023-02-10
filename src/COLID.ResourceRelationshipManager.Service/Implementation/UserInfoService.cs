@@ -1,5 +1,6 @@
 ﻿using COLID.ResourceRelationshipManager.Services.Interface;
 using Microsoft.AspNetCore.Http;
+using System;
 using System.Linq;
 using System.Security.Claims;
 
@@ -22,6 +23,11 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         }
         public string GetEmail()
         {
+            string? currentEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+            if (currentEnvironment != null && currentEnvironment == "Local")
+            {
+                return "superadmin@bayer.com";
+            }
             return _email;
         }
     }

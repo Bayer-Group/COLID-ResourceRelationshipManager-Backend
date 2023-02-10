@@ -17,6 +17,8 @@ using System.Web;
 using Newtonsoft.Json;
 using COLID.ResourceRelationshipManager.Common.DataModels.RequestDTOs;
 using COLID.ResourceRelationshipManager.Common.DataModels.Resource;
+using System.IO;
+using Microsoft.Extensions.Configuration;
 
 namespace COLID.ResourceRelationshipManager.Services.Implementation
 {
@@ -30,6 +32,16 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         private readonly IRemoteRegistrationService _remoteRegistrationService;
         private readonly IRemoteSearchService _remoteSearchService;
         private readonly ILogger<GraphMapService> _logger;
+        private static readonly string _basePath = Path.GetFullPath("appsettings.json");
+        private static readonly string _filePath = _basePath.Substring(0, _basePath.Length - 16);
+        private static IConfigurationRoot configuration = new ConfigurationBuilder()
+                     .SetBasePath(_filePath)
+                    .AddJsonFile("appsettings.json")
+                    .Build();
+        private static readonly string _serviceUrl = configuration.GetValue<string>("ServiceUrl");
+        private static readonly string _httpServiceUrl = configuration.GetValue<string>("HttpServiceUrl");
+
+
 
         /// <summary>
         /// 
@@ -221,7 +233,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
              x => x.Properties.GetValueOrNull(COLID.Graph.Metadata.Constants.Shacl.Group, true)["key"].Value == COLID.Graph.Metadata.Constants.Resource.Groups.LinkTypes)
                             .Select(x => new
                             {
-                                value = x.Properties.GetValueOrNull("http://pid.bayer.com/kos/19014/hasPID", true),
+                                value = x.Properties.GetValueOrNull(_httpServiceUrl + "kos/19014/hasPID", true),
 
                                 name = x.Properties.GetValueOrNull(Graph.Metadata.Constants.Shacl.Name, true),
 
@@ -283,6 +295,11 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
             return relationMap;
         }
 
+        public async Task<RelationMap> GetPlainRelationMapById(string relationMapId)
+        {
+            return await _repo.GetRelationMapById(relationMapId);
+        }
+
         /// <summary>
         /// Save Relation Map
         /// </summary>
@@ -291,6 +308,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         {
             RelationMap relationMap; 
             List<Nodes> nodes = new List<Nodes>();
+            bool isNew = false;
             if (graphMapV2SaveDto.nodes.Count() > 0)
             {
                 foreach (var node in graphMapV2SaveDto.nodes)
@@ -301,55 +319,24 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
 
             if (string.IsNullOrEmpty(graphMapV2SaveDto.Id))
             {
-                relationMap = new RelationMap() { Name = graphMapV2SaveDto.name, Description = graphMapV2SaveDto.description, Nodes = nodes };
+                isNew = true;
+                relationMap = new RelationMap() { Id = Guid.NewGuid(), Name = graphMapV2SaveDto.name, Description = graphMapV2SaveDto.description, Nodes = nodes };
             }
             else
             {
                 relationMap = new RelationMap() { Id = Guid.Parse(graphMapV2SaveDto.Id), Name = graphMapV2SaveDto.name, Description = graphMapV2SaveDto.description, Nodes = nodes };
             }
 
-            if (relationMap.Id == Guid.Empty && GetRelationMapByName(relationMap.Name) != null)
+            if (isNew && await GetRelationMapByName(relationMap.Name) != null)
             {
                 throw new BusinessException(message: $"Graph with the name '{relationMap.Name}' already exist!");
             }
 
             relationMap.ModifiedBy = _userInfoService.GetEmail();
             relationMap.ModifiedAt = DateTime.UtcNow;
-            Guid? relationMapId = await _repo.SaveRelationMap(relationMap);
+            Guid relationMapId = await _repo.SaveRelationMap(relationMap, isNew);
             
             return await GetRelationMapById(relationMapId.ToString());
-        }
-
-        /// <summary>
-        /// Delete Nodes By RelationMapId
-        /// </summary>
-        /// <param name="relationMapId"></param>
-        /// <returns></returns>
-        public async Task<RelationMap> DeleteNodesByRelationMapId(string relationMapId)
-        {
-            RelationMap relationMap; 
-            try
-            {
-                relationMap = await _repo.GetRelationMapById(relationMapId);
-                
-                string mapOwner = _userInfoService.GetEmail();
-                
-                if (relationMap.ModifiedBy == mapOwner)
-                {
-                    // delete nodes before deletiong relation map
-                    await _repo.DeleteNodesByRelationMapId(relationMap.Id);
-                }
-                else
-                {
-                    relationMap = new RelationMap();
-                }
-            }
-            catch (System.Exception ex)
-            {
-                _logger.LogError("You are not valid user to delete this map", ex.Message);
-                return new RelationMap();
-            }
-            return relationMap;
         }
 
         /// <summary>
@@ -357,15 +344,18 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// </summary>
         /// <param name="relationMap"></param>
         /// <returns></returns>
-        public async Task DeleteRelationMap(RelationMap relationMap)
+        public async Task<bool> DeleteRelationMap(RelationMap relationMap, bool isSuperAdmin = false)
         {
             string mapOwner = _userInfoService.GetEmail();
 
-            if (relationMap.ModifiedBy == mapOwner)
+            if (!isSuperAdmin && relationMap.ModifiedBy != mapOwner)
             {
-                // delete nodes before deletiong relation map
-                await _repo.DeleteRelationMap(relationMap);
+                return false;
             }
+
+             // delete nodes before deletiong relation map
+             await _repo.DeleteRelationMap(relationMap);
+            return true;
         }
 
         /// <summary>
@@ -411,7 +401,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                             {
                                 if (data != null)
                                 {
-                                    var resourceName = data["https://pid.bayer.com/kos/19050/hasLabel"]["outbound"][0]["value"].ToString();
+                                    var resourceName = data[_serviceUrl + "kos/19050/hasLabel"]["outbound"][0]["value"].ToString();
                                     var resourceTypeUri = data["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]["outbound"][0]["uri"].ToString();
                                     var mapLinksAndTargetDTO = GetMapLinks(data, node.PIDUri.ToString(), resourceName, resourceTypeUri, allLinks);
                                     
@@ -443,7 +433,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                                         Fx = node.xPosition,
                                         Fy = node.yPosition,
                                         Name = resourceName,
-                                        ShortName = GenerateShortName(data["https://pid.bayer.com/kos/19050/hasLabel"]["outbound"][0]["value"].ToString()),
+                                        ShortName = GenerateShortName(data[_serviceUrl + "kos/19050/hasLabel"]["outbound"][0]["value"].ToString()),
 
                                         ResourceType = new KeyValuePair<string, string>(
                                                 resourceTypeUri,
@@ -515,10 +505,10 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                     {
                         if(data != null)
                         {
-                            var resourceName = data["https://pid.bayer.com/kos/19050/hasLabel"]["outbound"][0]["value"].ToString();
+                            var resourceName = data[_serviceUrl + "kos/19050/hasLabel"]["outbound"][0]["value"].ToString();
                             var resourceTypeUri = data["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]["outbound"][0]["uri"].ToString();
                             var maplinks = GetMapLinks(data, pidUri, resourceName, resourceTypeUri, allLinks);
-                            
+                            var hasLaterVersion = data["https://pid.bayer.com/kos/19050/hasLaterVersion"] == null? "" : data["https://pid.bayer.com/kos/19050/hasLaterVersion"]["outbound"][0]["value"].ToString();
                             targetUris.AddRange(maplinks.TargetURIs);
 
                             if(targetUris.Count > 0)
@@ -545,6 +535,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                                 Fy = 0,
                                 Name = resourceName,
                                 ShortName = GenerateShortName(resourceName),
+                                LaterVersion = hasLaterVersion,
                                 ResourceType = new KeyValuePair<string, string>(
                                     resourceTypeUri,
                                     data["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]["outbound"][0]["value"].ToString()
@@ -572,8 +563,8 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
             try
             {
                 //Looping LinkTypes for outbound data from PIDURI responce
-                if (linksData["http://pid.bayer.com/kos/19050/LinkTypes"] != null && linksData["http://pid.bayer.com/kos/19050/LinkTypes"]["outbound"] != null)
-                    foreach (var outboundData in linksData["http://pid.bayer.com/kos/19050/LinkTypes"]["outbound"])
+                if (linksData[_httpServiceUrl + "kos/19050/LinkTypes"] != null && linksData[_httpServiceUrl + "kos/19050/LinkTypes"]["outbound"] != null)
+                    foreach (var outboundData in linksData[_httpServiceUrl + "kos/19050/LinkTypes"]["outbound"])
                     {
                         var linkType = outboundData["edge"] != null ? outboundData["edge"].ToString() : "";
                         mapLinks.Add(new MapLinkTO()
@@ -583,8 +574,8 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                             Source = sourcePIDUri,
                             SourceName = sourceName,
                             SourceType = sourceType,
-                            Target = outboundData["value"]["http://pid.bayer.com/kos/19014/hasPID"]["outbound"][0] != null ? outboundData["value"]["http://pid.bayer.com/kos/19014/hasPID"]["outbound"][0]["uri"].ToString() : "",
-                            TargetName = outboundData["value"]["https://pid.bayer.com/kos/19050/hasLabel"]["outbound"][0] != null ? outboundData["value"]["https://pid.bayer.com/kos/19050/hasLabel"]["outbound"][0]["value"].ToString() : "",
+                            Target = outboundData["value"][_httpServiceUrl + "kos/19014/hasPID"]["outbound"][0] != null ? outboundData["value"][_httpServiceUrl + "kos/19014/hasPID"]["outbound"][0]["uri"].ToString() : "",
+                            TargetName = outboundData["value"][_serviceUrl + "kos/19050/hasLabel"]["outbound"][0] != null ? outboundData["value"][_serviceUrl + "kos/19050/hasLabel"]["outbound"][0]["value"].ToString() : "",
                             TargetType = outboundData["value"]["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]["outbound"][0] != null ? outboundData["value"]["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]["outbound"][0]["uri"].ToString() : "",
                             LinkType = new KeyValuePair<string, string>
                             (
@@ -595,8 +586,8 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                     }
 
                 //Looping LinkTypes for inbound data from PIDURI responce
-                if (linksData["http://pid.bayer.com/kos/19050/LinkTypes"] != null && linksData["http://pid.bayer.com/kos/19050/LinkTypes"]["inbound"] != null)
-                    foreach (var inboundData in linksData["http://pid.bayer.com/kos/19050/LinkTypes"]["inbound"])
+                if (linksData[_httpServiceUrl + "kos/19050/LinkTypes"] != null && linksData[_httpServiceUrl + "kos/19050/LinkTypes"]["inbound"] != null)
+                    foreach (var inboundData in linksData[_httpServiceUrl + "kos/19050/LinkTypes"]["inbound"])
                     {
                         var linkType = inboundData["edge"] != null ? inboundData["edge"].ToString() : "";
                         mapLinks.Add(new MapLinkTO()
@@ -606,8 +597,8 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                             Source = sourcePIDUri,
                             SourceName = sourceName,
                             SourceType = sourceType,
-                            Target = inboundData["value"]["http://pid.bayer.com/kos/19014/hasPID"]["outbound"][0] != null ? inboundData["value"]["http://pid.bayer.com/kos/19014/hasPID"]["outbound"][0]["uri"].ToString() : "",
-                            TargetName = inboundData["value"]["https://pid.bayer.com/kos/19050/hasLabel"]["outbound"][0] != null ? inboundData["value"]["https://pid.bayer.com/kos/19050/hasLabel"]["outbound"][0]["value"].ToString() : "",
+                            Target = inboundData["value"][_httpServiceUrl + "kos/19014/hasPID"]["outbound"][0] != null ? inboundData["value"][_httpServiceUrl + "kos/19014/hasPID"]["outbound"][0]["uri"].ToString() : "",
+                            TargetName = inboundData["value"][_serviceUrl + "kos/19050/hasLabel"]["outbound"][0] != null ? inboundData["value"][_serviceUrl + "kos/19050/hasLabel"]["outbound"][0]["value"].ToString() : "",
                             TargetType = inboundData["value"]["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]["outbound"][0] != null ? inboundData["value"]["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]["outbound"][0]["uri"].ToString() : "",
                             LinkType = new KeyValuePair<string, string>
                             (
@@ -617,59 +608,59 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                         });
                     }
 
-                ////Looping Version for outound data from PIDURI responce
-                //if (linksData["https://pid.bayer.com/kos/19050/hasVersions"] != null && linksData["https://pid.bayer.com/kos/19050/hasVersions"]["outbound"].Count() > 0)
-                //{
-                //    foreach (var outboundData in linksData["https://pid.bayer.com/kos/19050/hasVersions"]["outbound"])
-                //    {
-                //        string outboundTarget = outboundData["value"]["http://pid.bayer.com/kos/19014/hasPID"] != null ? outboundData["value"]["http://pid.bayer.com/kos/19014/hasPID"]["uri"].ToString() : "";
-                //        targetURIs.Add(outboundTarget);
+                //Looping Version for outound data from PIDURI responce
+                if (linksData["https://pid.bayer.com/kos/19050/hasVersions"] != null && linksData["https://pid.bayer.com/kos/19050/hasVersions"]["outbound"].Count() > 0)
+                {
+                    foreach (var outboundData in linksData["https://pid.bayer.com/kos/19050/hasVersions"]["outbound"])
+                    {
+                        string outboundTarget = outboundData["value"]["http://pid.bayer.com/kos/19014/hasPID"] != null ? outboundData["value"]["http://pid.bayer.com/kos/19014/hasPID"]["uri"].ToString() : "";
+                        targetURIs.Add(outboundTarget);
 
-                //        mapLinks.Add(new MapLinkTO()
-                //        {
-                //            IsVersionLink = true,
-                //            Outbound = true,
-                //            Source = sourcePIDUri,
-                //            SourceName = sourceName,
-                //            SourceType = sourceType,
-                //            Target = outboundTarget,
-                //            TargetName = "",
-                //            TargetType = "",
-                //            LinkType = new KeyValuePair<string, string>
-                //            (
-                //                "https://pid.bayer.com/kos/19050/hasVersion",
-                //                outboundData["value"]["https://pid.bayer.com/kos/19050/hasVersion"] != null ? outboundData["value"]["https://pid.bayer.com/kos/19050/hasVersion"]["value"].ToString() : ""
-                //            )
-                //        });
-                //    }
-                //}
+                        mapLinks.Add(new MapLinkTO()
+                        {
+                            IsVersionLink = true,
+                            Outbound = true,
+                            Source = sourcePIDUri,
+                            SourceName = sourceName,
+                            SourceType = sourceType,
+                            Target = outboundTarget,
+                            TargetName = "",
+                            TargetType = "",
+                            LinkType = new KeyValuePair<string, string>
+                            (
+                                "https://pid.bayer.com/kos/19050/hasVersion",
+                                outboundData["value"]["https://pid.bayer.com/kos/19050/hasVersion"] != null ? outboundData["value"]["https://pid.bayer.com/kos/19050/hasVersion"]["value"].ToString() : ""
+                            )
+                        });
+                    }
+                }
 
-                ////Looping Version for inbound data from PIDURI responce
-                //if (linksData["https://pid.bayer.com/kos/19050/hasVersions"] != null && linksData["https://pid.bayer.com/kos/19050/hasVersions"]["inbound"].Count() > 0)
-                //{
-                //    foreach (var inboundData in linksData["https://pid.bayer.com/kos/19050/hasVersions"]["inbound"])
-                //    {
-                //        var inboundTarget = inboundData["value"]["http://pid.bayer.com/kos/19014/hasPID"] != null ? inboundData["value"]["http://pid.bayer.com/kos/19014/hasPID"]["uri"].ToString() : "";
-                //        targetURIs.Add(inboundTarget);
+                //Looping Version for inbound data from PIDURI responce
+                if (linksData["https://pid.bayer.com/kos/19050/hasVersions"] != null && linksData["https://pid.bayer.com/kos/19050/hasVersions"]["inbound"].Count() > 0)
+                {
+                    foreach (var inboundData in linksData["https://pid.bayer.com/kos/19050/hasVersions"]["inbound"])
+                    {
+                        var inboundTarget = inboundData["value"]["http://pid.bayer.com/kos/19014/hasPID"] != null ? inboundData["value"]["http://pid.bayer.com/kos/19014/hasPID"]["uri"].ToString() : "";
+                        targetURIs.Add(inboundTarget);
 
-                //        mapLinks.Add(new MapLinkTO()
-                //        {
-                //            IsVersionLink = true,
-                //            Outbound = false,
-                //            Source = sourcePIDUri,
-                //            SourceName = sourceName,
-                //            SourceType = sourceType,
-                //            Target = inboundTarget,
-                //            TargetName = "",
-                //            TargetType = "",
-                //            LinkType = new KeyValuePair<string, string>
-                //            (
-                //                "https://pid.bayer.com/kos/19050/hasVersion",
-                //                inboundData["value"]["https://pid.bayer.com/kos/19050/hasVersion"]["value"] != null ? inboundData["value"]["https://pid.bayer.com/kos/19050/hasVersion"]["value"].ToString() : ""
-                //            )
-                //        });
-                //    }
-                //}
+                        mapLinks.Add(new MapLinkTO()
+                        {
+                            IsVersionLink = true,
+                            Outbound = false,
+                            Source = sourcePIDUri,
+                            SourceName = sourceName,
+                            SourceType = sourceType,
+                            Target = inboundTarget,
+                            TargetName = "",
+                            TargetType = "",
+                            LinkType = new KeyValuePair<string, string>
+                            (
+                                "https://pid.bayer.com/kos/19050/hasVersion",
+                                inboundData["value"]["https://pid.bayer.com/kos/19050/hasVersion"]["value"] != null ? inboundData["value"]["https://pid.bayer.com/kos/19050/hasVersion"]["value"].ToString() : ""
+                            )
+                        });
+                    }
+                }
             }
             catch (System.Exception ex)
             {
@@ -704,7 +695,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                         {
                             responceTarget.Add(new TargetDTO() { 
                                 TargetPIDUri = pidUri, 
-                                TargetName = data["https://pid.bayer.com/kos/19050/hasLabel"]["outbound"][0]["value"].ToString(), 
+                                TargetName = data[_serviceUrl + "kos/19050/hasLabel"]["outbound"][0]["value"].ToString(), 
                                 TargetType = data["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]["outbound"][0]["uri"].ToString() });
                         }
                     }
