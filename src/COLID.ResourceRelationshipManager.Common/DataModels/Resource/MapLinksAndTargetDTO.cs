@@ -7,8 +7,8 @@ namespace COLID.ResourceRelationshipManager.Common.DataModels.Resource
 {
     public class MapLinksAndTargetDTO
     {
-        public List<MapLinkTO> MapLinks { get; set; }
-        public List<string> TargetURIs { get; set; }
+        public IList<MapLinkTO> MapLinks { get; set; }
+        public IList<Uri> TargetURIs { get; set; }
 
     }
 }

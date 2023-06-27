@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace COLID.ResourceRelationshipManager.Common.DataModels.Entity
 {
-    public class Nodes
+    public class Node
     {
         [MaxLength(36)]
         public Guid NodeId { get; set; }

@@ -14,13 +14,13 @@ namespace COLID.ResourceRelationshipManager.Repositories
 
         }
         public virtual DbSet<RelationMap> RelationMap { get; set; }
-        public virtual DbSet<Nodes> Nodes { get; set; }
+        public virtual DbSet<Node> Nodes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
             modelBuilder.Entity<RelationMap>().HasKey(m => m.Id);
-            modelBuilder.Entity<Nodes>(entity =>
+            modelBuilder.Entity<Node>(entity =>
             {
                 entity.HasKey(e => e.NodeId);
                 entity.HasOne(n => n.RelationMap)

@@ -2,7 +2,9 @@
 
 namespace COLID.ResourceRelationshipManager.Repositories.Migrations
 {
+#pragma warning disable CA1707 // Identifiers should not contain underscores
     public partial class addSource_TargetType : Migration
+#pragma warning restore CA1707 // Identifiers should not contain underscores
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {

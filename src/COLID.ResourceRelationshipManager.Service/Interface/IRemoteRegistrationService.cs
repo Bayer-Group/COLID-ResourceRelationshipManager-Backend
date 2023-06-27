@@ -17,7 +17,7 @@ namespace COLID.ResourceRelationshipManager.Services.Interface
         /// </summary>
         /// <param name="resources"></param>
         /// <returns></returns>
-        Task<List<ResourceCTO>> GetLinksAndResourcesForGraph(List<Uri> resources);
+        Task<List<ResourceCTO>> GetLinksAndResourcesForGraph(IList<Uri> resources);
 
         /// <summary>
         /// 
@@ -50,7 +50,7 @@ namespace COLID.ResourceRelationshipManager.Services.Interface
         /// </summary>
         /// <param name="linksInstantiableTypes"></param>
         /// <returns></returns>
-        Task<List<Entity>> GetInstantiableLinks(List<Entity> linksInstantiableTypes);
+        Task<List<Entity>> GetInstantiableLinks(IList<Entity> linksInstantiableTypes);
 
         /// <summary>
         /// Fetch a dictionary of all possible link types.

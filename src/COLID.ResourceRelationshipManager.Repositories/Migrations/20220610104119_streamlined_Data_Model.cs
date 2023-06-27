@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace COLID.ResourceRelationshipManager.Repositories.Migrations
 {
+#pragma warning disable CA1707 // Identifiers should not contain underscores
     public partial class streamlined_Data_Model : Migration
+#pragma warning restore CA1707 // Identifiers should not contain underscores
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {

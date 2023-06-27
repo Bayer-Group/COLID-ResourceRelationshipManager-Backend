@@ -102,7 +102,7 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
         [ProducesResponseType(typeof(List<MapNodeTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(List<MapNodeTO>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(List<MapNodeTO>), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetResources(List<Uri> resourceUris)
+        public async Task<IActionResult> GetResources(IList<Uri> resourceUris)
         {
             var graphMap = await _graphMapService.GetResources(resourceUris);
             if (graphMap?.Count == 0)
@@ -171,7 +171,7 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
         [ProducesResponseType(typeof(Entity), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(Entity), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(Entity), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ManageResourceLinking(List<LinkResourceTypeDTOV2> linkResourceTypes)
+        public async Task<IActionResult> ManageResourceLinking(IList<LinkResourceTypeDTOV2> linkResourceTypes)
         {
             var result = await _graphMapService.ManageResourceLinking(linkResourceTypes);
             if (result?.Count == 0)

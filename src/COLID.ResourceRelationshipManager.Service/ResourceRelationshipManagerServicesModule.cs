@@ -38,8 +38,8 @@ namespace COLID.ResourceRelationshipManager.Services
             var dbPassword = configuration.GetValue<string>("Database:Password");
 
             return connectionString
-                .Replace("{DB_USER}", dbUser)
-                .Replace("{DB_PASSWORD}", dbPassword);
+                .Replace("{DB_USER}", dbUser, StringComparison.Ordinal)
+                .Replace("{DB_PASSWORD}", dbPassword, StringComparison.Ordinal);
         }
     }
 }

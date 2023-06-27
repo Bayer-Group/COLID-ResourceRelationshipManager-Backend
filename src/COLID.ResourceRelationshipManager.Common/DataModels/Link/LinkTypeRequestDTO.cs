@@ -9,7 +9,7 @@ namespace COLID.ResourceRelationshipManager.Common.DataModels
     /// </summary>
     public class LinkTypeRequestDTO
     {
-        public string SourceUri { get; set; }
-        public string TargetUri { get; set; }
+        public Uri SourceUri { get; set; }
+        public Uri TargetUri { get; set; }
     }
 }

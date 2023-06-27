@@ -48,12 +48,12 @@ namespace COLID.ResourceRelationshipManager.Repositories.Implementation
 
             query = query.Include(m => m.Nodes);
 
-            if (graphMapSearchDTO.sortType.Equals("asc"))
+            if (graphMapSearchDTO.sortType.Equals("asc", StringComparison.OrdinalIgnoreCase))
             {
                 query = Queryable.OrderBy(query, orderFunctions[graphMapSearchDTO.sortKey]);
             }
 
-            if (graphMapSearchDTO.sortType.Equals("desc"))
+            if (graphMapSearchDTO.sortType.Equals("desc", StringComparison.OrdinalIgnoreCase))
             {
                 query = Queryable.OrderByDescending(query, orderFunctions[graphMapSearchDTO.sortKey]);
             }
@@ -96,31 +96,31 @@ namespace COLID.ResourceRelationshipManager.Repositories.Implementation
             return relationMap;
         }
 
-        public async Task<Guid> SaveRelationMap(RelationMap relationMapReqDto, bool isNew)
+        public async Task<Guid> SaveRelationMap(RelationMap relationMap, bool isNew)
         {
             if (isNew)
             {
-                _db.RelationMap.Add(relationMapReqDto);
+                _db.RelationMap.Add(relationMap);
                 await _db.SaveChangesAsync();
             }
             else
             {
                 var currentRelationMap = _db.RelationMap
                 .Include(x => x.Nodes)
-                .FirstOrDefault(x => x.Id == relationMapReqDto.Id);
+                .FirstOrDefault(x => x.Id == relationMap.Id);
 
-                if (currentRelationMap.ModifiedBy == relationMapReqDto.ModifiedBy)
+                if (currentRelationMap.ModifiedBy == relationMap.ModifiedBy)
                 {
                     await DeleteNodesByRelationMapId(currentRelationMap.Id); // removing existing nodes
 
-                    foreach (var node in relationMapReqDto.Nodes)
+                    foreach (var node in relationMap.Nodes)
                     {
                         // adding updated nodes
-                        currentRelationMap.Nodes.Add(new Nodes() { PIDUri = node.PIDUri, RelationMapId = currentRelationMap.Id, xPosition = node.xPosition, yPosition = node.yPosition });
+                        currentRelationMap.Nodes.Add(new Node() { PIDUri = node.PIDUri, RelationMapId = currentRelationMap.Id, xPosition = node.xPosition, yPosition = node.yPosition });
                     }
-                    currentRelationMap.Description = relationMapReqDto.Description;
-                    currentRelationMap.Name = relationMapReqDto.Name;
-                    currentRelationMap.ModifiedAt = relationMapReqDto.ModifiedAt;
+                    currentRelationMap.Description = relationMap.Description;
+                    currentRelationMap.Name = relationMap.Name;
+                    currentRelationMap.ModifiedAt = relationMap.ModifiedAt;
 
                     _db.RelationMap.Update(currentRelationMap);
                     await _db.SaveChangesAsync();
@@ -129,7 +129,7 @@ namespace COLID.ResourceRelationshipManager.Repositories.Implementation
                     throw new BusinessException(message: $"Forbidden Error!");
                 }
             }
-            return relationMapReqDto.Id;
+            return relationMap.Id;
         }
         
         public async Task<RelationMap> GetRelationMapById(string relationMapId)

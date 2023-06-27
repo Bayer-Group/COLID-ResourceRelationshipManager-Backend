@@ -11,7 +11,7 @@ namespace COLID.ResourceRelationshipManager.Common.DataModels.Entity
         public Guid Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public ICollection<Nodes> Nodes { get; set; }
+        public ICollection<Node> Nodes { get; set; }
 
         [NotMapped]
         public int NodeCount => Nodes != null ? Convert.ToInt32($"{ Nodes.Count }") : 0;

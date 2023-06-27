@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Serialization;
+using System.Net.Http;
 
 namespace COLID.ResourceRelationshipManager
 {
@@ -59,7 +60,14 @@ namespace COLID.ResourceRelationshipManager
                 }
             );
             services.AddHttpContextAccessor();
-            services.AddHttpClient();
+            services.AddHttpClient("NoProxy").ConfigurePrimaryHttpMessageHandler(() =>
+            {
+                return new HttpClientHandler
+                {
+                    UseProxy = false,
+                    Proxy = null
+                };
+            });
             services.AddHealthChecks();
 
             services.AddIdentityModule(Configuration);

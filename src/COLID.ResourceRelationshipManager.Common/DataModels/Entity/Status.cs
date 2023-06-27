@@ -18,7 +18,7 @@ namespace COLID.ResourceRelationshipManager.Common.DataModels.Entity
                 }
                 else
                 {
-                    Key = getUri(key);
+                    Key = GetUri(key);
                     Value = key;
                 }
             }
@@ -26,7 +26,7 @@ namespace COLID.ResourceRelationshipManager.Common.DataModels.Entity
         public string Key { get; set; }
         public string Value { get; set; }
 
-        private string getUri(string key)
+        private static string GetUri(string key)
         {
             if (!string.IsNullOrEmpty(key))
             {

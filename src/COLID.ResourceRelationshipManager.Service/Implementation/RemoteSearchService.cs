@@ -1,4 +1,4 @@
-﻿using COLID.Identity.Extensions;
+using COLID.Identity.Extensions;
 using COLID.Identity.Services;
 using COLID.ResourceRelationshipManager.Services.Configuration;
 using COLID.ResourceRelationshipManager.Services.Interface;
@@ -27,7 +27,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         private readonly IConfiguration _configuration;
         private readonly ITokenService<ColidSearchServiceTokenOptions> _tokenService;
         private readonly ILogger<RemoteSearchService> _logger;
-
+        private readonly bool _bypassProxy;
         private readonly string SearchService_Document_Api;
 
         public RemoteSearchService(
@@ -44,7 +44,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
             _correlationContextAccessor = correlationContextAccessor;
             _cancellationToken = httpContextAccessor?.HttpContext?.RequestAborted ?? CancellationToken.None;
             _logger = logger;
-
+            _bypassProxy = _configuration.GetValue<bool>("BypassProxy");
             var baseUri = _configuration.GetConnectionString("searchServiceReindexUrl");
             SearchService_Document_Api = $"{baseUri}/api/documentsByIds";
         }
@@ -78,29 +78,32 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// <param name="identifiers"></param>
         /// <returns></returns>
         public async Task<IDictionary<string, IEnumerable<JObject>>> GetDocumentsByIds(IEnumerable<string> identifiers)
-        {
-            HttpClient client = new HttpClient();
-            try
+        {            
+            using (var client = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
             {
-                // Encode the searchRequest into a JSON object for sending
-                string jsonobject = JsonConvert.SerializeObject(identifiers);
-                StringContent content = new StringContent(jsonobject, Encoding.UTF8, "application/json");
+                try
+                {
+                    // Encode the searchRequest into a JSON object for sending
+                    string jsonobject = JsonConvert.SerializeObject(identifiers);
+                    StringContent content = new StringContent(jsonobject, Encoding.UTF8, "application/json");
 
-                //Fetch token for search service
-                var accessToken = await _tokenService.GetAccessTokenForWebApiAsync();
-                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                    //Fetch token for search service
+                    var accessToken = await _tokenService.GetAccessTokenForWebApiAsync();
+                    client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
 
-                _logger.LogInformation("Sending request to search service to get documents by id: " + JsonConvert.SerializeObject(content) + " and identifiers " + JsonConvert.SerializeObject(identifiers));
-                // Post the JSON object to the SearchService endpoint
-                HttpResponseMessage response = await client.PostAsync(SearchService_Document_Api, content);
-                response.EnsureSuccessStatusCode();
-                var result = JsonConvert.DeserializeObject<IDictionary<string, IEnumerable<JObject>>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
-                return result;
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError("An error occurred while passing the search request to the search service GetDocumentsByIds.", ex);
-                throw ex;
+                    _logger.LogInformation("Sending request to search service to get documents by id: " + JsonConvert.SerializeObject(content) + " and identifiers " + JsonConvert.SerializeObject(identifiers));
+                    // Post the JSON object to the SearchService endpoint
+                    HttpResponseMessage response = await client.PostAsync(SearchService_Document_Api, content);
+                    content.Dispose();
+                    response.EnsureSuccessStatusCode();
+                    var result = JsonConvert.DeserializeObject<IDictionary<string, IEnumerable<JObject>>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
+                    return result;
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogError("An error occurred while passing the search request to the search service GetDocumentsByIds.", ex);
+                    throw ex;
+                }
             }
         }
     }

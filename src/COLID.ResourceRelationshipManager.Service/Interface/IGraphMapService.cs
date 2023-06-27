@@ -45,7 +45,7 @@ namespace COLID.ResourceRelationshipManager.Services.Interface
         /// </summary>
         /// <param name="resourceUris"></param>
         /// <returns></returns>
-        Task<IList<ResourceDTO>> GetResourcesFromTripleStore(List<Uri> resourceUris);
+        Task<IList<ResourceDTO>> GetResourcesFromTripleStore(IList<Uri> resourceUris);
 
         /// <summary>
         /// 
@@ -53,14 +53,14 @@ namespace COLID.ResourceRelationshipManager.Services.Interface
         /// <param name="sourceUri"></param>
         /// <param name="targetUri"></param>
         /// <returns></returns>
-        Task<IList<LinkResourceTypeDTO>> GetLinkResourceTypes(string sourceUri, string targetUri);
+        Task<IList<LinkResourceTypeDTO>> GetLinkResourceTypes(Uri sourceUri, Uri targetUri);
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="linkResourceTypes"></param>
         /// <returns></returns>
-        Task<IList<Entity>> ManageResourceLinking(List<LinkResourceTypeDTOV2> linkResourceTypes);
+        Task<IList<Entity>> ManageResourceLinking(IList<LinkResourceTypeDTOV2> linkResourceTypes);
 
         /// <summary>
         /// 
@@ -108,6 +108,6 @@ namespace COLID.ResourceRelationshipManager.Services.Interface
         /// </summary>
         /// <param name="uris">List of URIs</param>
         /// <returns>List of Map Node objects</returns>
-        Task<List<MapNodeTO>> GetResources(List<Uri> uris);
+        Task<List<MapNodeTO>> GetResources(IList<Uri> uris);
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Newtonsoft.Json;
 using System.Net.Http;
 using System.Threading;
@@ -29,7 +29,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         private readonly IHttpClientFactory _clientFactory;
         private readonly IConfiguration _configuration;
         private readonly ITokenService<ColidRegistrationServiceTokenOptions> _tokenService;
-
+        private readonly bool _bypassProxy;
         private readonly string RegistrationService_Get_Links_And_Resource_Api;
         private readonly string RegistrationService_Get_Resources_Api;
         private readonly string RegistrationService_Get_Metadata_Api;
@@ -58,6 +58,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
             _tokenService = tokenService;
             _correlationContextAccessor = correlationContextAccessor;
             _cancellationToken = httpContextAccessor?.HttpContext?.RequestAborted ?? CancellationToken.None;
+            _bypassProxy = _configuration.GetValue<bool>("BypassProxy");
 
             var baseUri = _configuration.GetConnectionString("ColidRegistrationServiceUrl");
             RegistrationService_Get_Links_And_Resource_Api = $"{baseUri}/api/v3/resource/linkedresourceList";
@@ -91,20 +92,17 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// <param name="links"></param>
         /// <param name="resources"></param>
         /// <returns></returns>
-        public async Task<List<ResourceCTO>> GetLinksAndResourcesForGraph(List<Uri> resources)
+        public async Task<List<ResourceCTO>> GetLinksAndResourcesForGraph(IList<Uri> resources)
         {
-            using var httpClient = _clientFactory.CreateClient();
-            var response = await AquireTokenAndSendToRegistrationService(httpClient, HttpMethod.Post,
-                $"{RegistrationService_Get_Links_And_Resource_Api}", resources);
-
-            if (!response.IsSuccessStatusCode)
+            using (var httpClient = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
             {
-                throw new System.Exception("Something went wrong while fetching resources and their links from RegistrationService");
+                var response = await AquireTokenAndSendToRegistrationService(httpClient, HttpMethod.Post,
+                    $"{RegistrationService_Get_Links_And_Resource_Api}", resources);
+
+                response.EnsureSuccessStatusCode();
+
+                return JsonConvert.DeserializeObject<List<ResourceCTO>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
             }
-
-            var content = JsonConvert.DeserializeObject<List<ResourceCTO>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
-
-            return content;
         }
 
         /// <summary>
@@ -114,14 +112,14 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// <returns></returns>
         public async Task<ResourceCTO> GetResourcesFromGraph(Uri resourcesUri)
         {
-            using var httpClient = _clientFactory.CreateClient();
-            var response = await AquireTokenAndSendToRegistrationService(httpClient, HttpMethod.Get, $"{RegistrationService_Get_Resources_Api}?pidUri={resourcesUri}", null);
-
-            if (!response.IsSuccessStatusCode)
+            using (var httpClient = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
             {
-                throw new System.Exception("Something went wrong while fetching resources frmom triplestore in RegistrationService");
+                var response = await AquireTokenAndSendToRegistrationService(httpClient, HttpMethod.Get, $"{RegistrationService_Get_Resources_Api}?pidUri={resourcesUri}", null);
+
+                response.EnsureSuccessStatusCode();
+
+                return JsonConvert.DeserializeObject<ResourceCTO>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
             }
-            return JsonConvert.DeserializeObject<ResourceCTO>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
         }
         /// <summary>
         /// 
@@ -133,18 +131,18 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// <returns></returns>
         public async Task<List<MetadataProperty>> GetResourceTypes(Uri resourcesUri)
         {
-            using var httpClient = _clientFactory.CreateClient();
-            var encodedUri = HttpUtility.UrlEncode(resourcesUri.AbsoluteUri);
-            var response = await AquireTokenAndSendToRegistrationService(httpClient,
-                HttpMethod.Get,
-                $"{RegistrationService_Get_Metadata_Api}?entityType={encodedUri}",
-                null);
-
-            if (!response.IsSuccessStatusCode)
+            using (var httpClient = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
             {
-                throw new System.Exception("Something went wrong while fetching resourceTypes in RegistrationService");
+                var encodedUri = HttpUtility.UrlEncode(resourcesUri.AbsoluteUri);
+                var response = await AquireTokenAndSendToRegistrationService(httpClient,
+                    HttpMethod.Get,
+                    $"{RegistrationService_Get_Metadata_Api}?entityType={encodedUri}",
+                    null);
+
+                response.EnsureSuccessStatusCode();
+
+                return JsonConvert.DeserializeObject<List<MetadataProperty>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
             }
-            return JsonConvert.DeserializeObject<List<MetadataProperty>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
         }
         /// <summary>
         /// 
@@ -153,8 +151,9 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// <returns></returns>
         public async Task<Entity> LinkResource(LinkResourceTypeDTOV2 linkResourceType, string requester)
         {
-            using var httpClient = _clientFactory.CreateClient();
-            var response = await AquireTokenAndSendToRegistrationService(httpClient,
+            using (var httpClient = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
+            {
+                var response = await AquireTokenAndSendToRegistrationService(httpClient,
                 HttpMethod.Post,
                  string.Format("{0}?pidUri={1}&linkType={2}&pidUriToLink={3}&requester={4}",
                                 RegistrationService_Link_Resources_Api,
@@ -165,11 +164,10 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                             )
                 , null);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new System.Exception("Something went wrong while linking two resources in RegistrationService");
+                response.EnsureSuccessStatusCode();
+
+                return JsonConvert.DeserializeObject<Entity>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
             }
-            return JsonConvert.DeserializeObject<Entity>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
         }
 
         /// <summary>
@@ -179,8 +177,9 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// <returns></returns>
         public async Task<Entity> UnlinkResource(LinkResourceTypeDTOV2 linkResourceType, string requester)
         {
-            using var httpClient = _clientFactory.CreateClient();
-            var response = await AquireTokenAndSendToRegistrationService(httpClient,
+            using (var httpClient = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
+            {
+                var response = await AquireTokenAndSendToRegistrationService(httpClient,
                 HttpMethod.Post,
                 string.Format("{0}?pidUri={1}&linkType={2}&pidUriToUnLink={3}&returnTargetResource={4}&requester={5}",
                                 RegistrationService_Unlink_Resources_Api,
@@ -192,25 +191,22 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                             )
                 , null);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new System.Exception("Something went wrong while unlinking two resources in RegistrationService");
+                response.EnsureSuccessStatusCode();
+
+                return JsonConvert.DeserializeObject<Entity>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
             }
-            return JsonConvert.DeserializeObject<Entity>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
         }
-        public async Task<List<Entity>> GetInstantiableLinks(List<Entity> linksInstantiableTypes)
+        public async Task<List<Entity>> GetInstantiableLinks(IList<Entity> linksInstantiableTypes)
         {
-            using (var httpClient = _clientFactory.CreateClient())
+            using (var httpClient = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
             {
                 var response = await AquireTokenAndSendToRegistrationService(httpClient,
-                    HttpMethod.Post,
-                    $"{RegistrationService_Metadata_InstantiableTypes}",
-                    linksInstantiableTypes);
+                HttpMethod.Post,
+                $"{RegistrationService_Metadata_InstantiableTypes}",
+                linksInstantiableTypes);
 
-                if (!response.IsSuccessStatusCode)
-                {
-                    throw new System.Exception("Something went wrong while fetching eligible links from RegistrationService");
-                }
+                response.EnsureSuccessStatusCode();
+
                 return JsonConvert.DeserializeObject<List<Entity>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
             }
         }
@@ -222,18 +218,11 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// <exception cref="System.Exception">In case of errors</exception>
         public async Task<Dictionary<string, string>> GetLinkTypes()
         {
-            using(var httpClient = _clientFactory.CreateClient())
+            using (var httpClient = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
             {
-                var response = await AquireTokenAndSendToRegistrationService(httpClient,
-                    HttpMethod.Get,
-                    $"{RegistrationService_Metadata_LinkTypes}",
-                    null
-                );
+                var response = await AquireTokenAndSendToRegistrationService(httpClient, HttpMethod.Get, $"{RegistrationService_Metadata_LinkTypes}", null);
+                response.EnsureSuccessStatusCode();
 
-                if (!response.IsSuccessStatusCode)
-                {
-                    throw new System.Exception("Something went wrong while fetching the list of all possible link types");
-                }
                 return JsonConvert.DeserializeObject<Dictionary<string, string>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
             }
         }

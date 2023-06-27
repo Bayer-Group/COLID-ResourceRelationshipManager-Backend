@@ -1,4 +1,4 @@
-﻿using COLID.ResourceRelationshipManager.Services.Interface;
+using COLID.ResourceRelationshipManager.Services.Interface;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Linq;
@@ -23,8 +23,8 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         }
         public string GetEmail()
         {
-            string? currentEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-            if (currentEnvironment != null && currentEnvironment == "Local")
+            string currentEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+            if (currentEnvironment != null && (currentEnvironment == "Local" || currentEnvironment == "Docker"))
             {
                 return "superadmin@bayer.com";
             }

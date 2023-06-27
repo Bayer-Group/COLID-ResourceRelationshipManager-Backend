@@ -10,8 +10,8 @@ namespace COLID.ResourceRelationshipManager.Common.Enums
     public static class Status
     {
         private static readonly string _basePath = Path.GetFullPath("appsettings.json");
-        private static readonly string _filePath = _basePath.Substring(0, _basePath.Length - 16);
-        private static IConfigurationRoot configuration = new ConfigurationBuilder()
+        private static readonly string _filePath = _basePath[..^16];
+        private static readonly IConfigurationRoot configuration = new ConfigurationBuilder()
                      .SetBasePath(_filePath)
                     .AddJsonFile("appsettings.json")
                     .Build();
