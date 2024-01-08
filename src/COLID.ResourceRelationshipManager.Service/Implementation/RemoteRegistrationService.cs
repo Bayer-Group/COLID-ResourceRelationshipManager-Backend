@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Newtonsoft.Json;
 using System.Net.Http;
 using System.Threading;
@@ -7,7 +7,6 @@ using Newtonsoft.Json.Converters;
 using System.Collections.Generic;
 using COLID.Identity.Extensions;
 using COLID.Identity.Services;
-using CorrelationId.Abstractions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using COLID.Graph.TripleStore.DataModels.Base;
@@ -16,6 +15,7 @@ using COLID.ResourceRelationshipManager.Common.DataModels;
 using COLID.ResourceRelationshipManager.Services.Configuration;
 using COLID.ResourceRelationshipManager.Services.Interface;
 using System.Web;
+using COLID.ResourceRelationshipManager.Common.DataModels.RequestDTOs;
 
 namespace COLID.ResourceRelationshipManager.Services.Implementation
 {
@@ -25,7 +25,6 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
     public class RemoteRegistrationService : IRemoteRegistrationService
     {
         private readonly CancellationToken _cancellationToken;
-        private readonly ICorrelationContextAccessor _correlationContextAccessor;
         private readonly IHttpClientFactory _clientFactory;
         private readonly IConfiguration _configuration;
         private readonly ITokenService<ColidRegistrationServiceTokenOptions> _tokenService;
@@ -37,6 +36,8 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         private readonly string RegistrationService_Unlink_Resources_Api;
         private readonly string RegistrationService_Metadata_InstantiableTypes;
         private readonly string RegistrationService_Metadata_LinkTypes;
+        private readonly string RegistrationService_Register_Saved_Map;
+        private readonly string RegistrationService_Remove_Saved_Map_Proxy;
 
         /// <summary>
         /// 
@@ -44,19 +45,16 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// <param name="clientFactory"></param>
         /// <param name="configuration"></param>
         /// <param name="httpContextAccessor"></param>
-        /// <param name="correlationContextAccessor"></param>
         /// <param name="tokenService"></param>
         public RemoteRegistrationService(
             IHttpClientFactory clientFactory,
             IConfiguration configuration,
             IHttpContextAccessor httpContextAccessor,
-            ICorrelationContextAccessor correlationContextAccessor,
             ITokenService<ColidRegistrationServiceTokenOptions> tokenService)
         {
             _clientFactory = clientFactory;
             _configuration = configuration;
             _tokenService = tokenService;
-            _correlationContextAccessor = correlationContextAccessor;
             _cancellationToken = httpContextAccessor?.HttpContext?.RequestAborted ?? CancellationToken.None;
             _bypassProxy = _configuration.GetValue<bool>("BypassProxy");
 
@@ -68,6 +66,8 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
             RegistrationService_Link_Resources_Api = $"{baseUri}/api/v3/resource/addLink";
             RegistrationService_Unlink_Resources_Api = $"{baseUri}/api/v3/resource/removeLink";
             RegistrationService_Metadata_LinkTypes = $"{baseUri}/api/v3/metadata/linkTypes";
+            RegistrationService_Register_Saved_Map = $"{baseUri}/api/v3/identifier/rrmMaps";
+            RegistrationService_Remove_Saved_Map_Proxy = $"{baseUri}/api/v3/proxyConfig/removeMapsProxy";
         }
         /// <summary>
         /// 
@@ -82,7 +82,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
             var accessToken = await _tokenService.GetAccessTokenForWebApiAsync();
             Console.WriteLine("Access token atrs is " + accessToken);
             var response = await httpClient.SendRequestWithOptionsAsync(httpMethod, endpointUrl,
-                requestBody, accessToken, _cancellationToken, _correlationContextAccessor.CorrelationContext);
+                requestBody, accessToken, _cancellationToken);
             return response;
         }
 
@@ -224,6 +224,26 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                 response.EnsureSuccessStatusCode();
 
                 return JsonConvert.DeserializeObject<Dictionary<string, string>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
+            }
+        }
+
+        public async Task<MapProxyDTO> RegisterSavedMap(MapProxyDTO savedMap)
+        {
+            using (var httpClient = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
+            {
+                var response = await AquireTokenAndSendToRegistrationService(httpClient, HttpMethod.Post, RegistrationService_Register_Saved_Map, savedMap);
+                response.EnsureSuccessStatusCode();
+
+                return JsonConvert.DeserializeObject<MapProxyDTO>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
+            }
+        }
+
+        public async Task RemoveSavedMapPidUriFromNginxConfig(string pidUri)
+        {
+            using (var httpClient = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
+            {
+                var response = await AquireTokenAndSendToRegistrationService(httpClient, HttpMethod.Delete, RegistrationService_Remove_Saved_Map_Proxy, pidUri);
+                response.EnsureSuccessStatusCode();
             }
         }
     }

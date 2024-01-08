@@ -8,8 +8,10 @@ using COLID.ResourceRelationshipManager.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace COLID.ResourceRelationshipManager.WebApi.Controllers
@@ -49,6 +51,26 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
                 return NotFound();
             }
             return Ok(graphMaps);
+        }
+
+        /// <summary>
+        /// Returns a list of all created maps with piduri
+        /// </summary>
+        /// <returns>A list of all created graphs</returns>
+        /// <response code="200">Returns the list of graphs. If there are no graphs, an empty list is returned.</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [HttpGet("All/pidURIs")]
+        [ProducesResponseType(typeof(List<RelationMap>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<RelationMap>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetAllGraphMapsWithPIDUri()
+        {
+            var mapProxyDTOs = await _graphMapService.GetAllMapProxyDTOs();
+            if (mapProxyDTOs?.Count == 0)
+            {
+                return NotFound();
+            }
+
+            return Ok(mapProxyDTOs);
         }
 
         /// <summary>

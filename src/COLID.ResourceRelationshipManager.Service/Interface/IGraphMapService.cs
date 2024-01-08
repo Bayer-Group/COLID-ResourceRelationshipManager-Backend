@@ -21,7 +21,8 @@ namespace COLID.ResourceRelationshipManager.Services.Interface
         /// <param name="limit"></param>
         /// <param name="offest"></param>
         /// <returns>RelationMap</returns>
-        Task<IList<RelationMapResponceDTO>> GetAllGraphMaps(int limit, int offest);
+        Task<IList<RelationMapResponseDTO>> GetAllGraphMaps(int limit, int offest);
+        Task<IList<MapProxyDTO>> GetAllMapProxyDTOs();
 
         /// <summary>
         /// 
@@ -67,7 +68,7 @@ namespace COLID.ResourceRelationshipManager.Services.Interface
         /// </summary>
         /// <param name="pidUri"></param>
         /// <returns></returns>
-        Task<IList<RelationMapResponceDTO>> GetGraphMapForResource(Uri pidUri);
+        Task<IList<RelationMapResponseDTO>> GetGraphMapForResource(Uri pidUri);
 
         /// <summary>
         /// Get Relation Map By Name

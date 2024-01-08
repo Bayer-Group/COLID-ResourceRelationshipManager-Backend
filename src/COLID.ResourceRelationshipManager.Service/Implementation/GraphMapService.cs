@@ -59,24 +59,31 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// <param name="limit"></param>
         /// <param name="offest"></param>
         /// <returns></returns>
-        public async Task<IList<RelationMapResponceDTO>> GetAllGraphMaps(int limit, int offest)
+        public async Task<IList<RelationMapResponseDTO>> GetAllGraphMaps(int limit, int offest)
         {
             var relationMaps = await _repo.GetAllGraphMaps(limit, offest);
-            List<RelationMapResponceDTO> relationMapResponceDTOs = new List<RelationMapResponceDTO>();
+            List<RelationMapResponseDTO> relationMapResponceDTOs = new List<RelationMapResponseDTO>();
             foreach (var relationMap in relationMaps)
             {
-                relationMapResponceDTOs.Add(new RelationMapResponceDTO()
+                relationMapResponceDTOs.Add(new RelationMapResponseDTO()
                 {
                     Id = relationMap.Id,
                     Description = relationMap.Description,
                     Name = relationMap.Name,
                     NodeCount = relationMap.NodeCount,
                     ModifiedBy = relationMap.ModifiedBy,
-                    ModifiedAt = relationMap.ModifiedAt
+                    ModifiedAt = relationMap.ModifiedAt,
+                    PidUri = relationMap.PidUri,
                 });
             }
 
             return relationMapResponceDTOs;
+        }
+
+        public async Task<IList<MapProxyDTO>> GetAllMapProxyDTOs()
+        {
+            var mapProxyDTOs = await _repo.GetAllMapProxyDTOs();
+            return mapProxyDTOs;
         }
 
         /// <summary>
@@ -109,13 +116,13 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// </summary>
         /// <param name="pidUri"></param>
         /// <returns></returns>
-        public async Task<IList<RelationMapResponceDTO>> GetGraphMapForResource(Uri pidUri)
+        public async Task<IList<RelationMapResponseDTO>> GetGraphMapForResource(Uri pidUri)
         {
             var relationMaps = await _repo.GetGraphMapForResource(pidUri);
-            List<RelationMapResponceDTO> relationMapResponceDTOs = new List<RelationMapResponceDTO>();
+            List<RelationMapResponseDTO> relationMapResponceDTOs = new List<RelationMapResponseDTO>();
             foreach (var relationMap in relationMaps)
             {
-                relationMapResponceDTOs.Add(new RelationMapResponceDTO()
+                relationMapResponceDTOs.Add(new RelationMapResponseDTO()
                 {
                     Id = relationMap.Id,
                     Description = relationMap.Description,
@@ -327,6 +334,12 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                 throw new BusinessException(message: $"Graph with the name '{relationMap.Name}' already exist!");
             }
 
+            if (isNew)
+            {
+                var mapProxyResponse = await _remoteRegistrationService.RegisterSavedMap(new MapProxyDTO(relationMap.Id));
+                relationMap.PidUri = mapProxyResponse.PidUri;
+            }
+
             relationMap.ModifiedBy = _userInfoService.GetEmail();
             relationMap.ModifiedAt = DateTime.UtcNow;
             Guid relationMapId = await _repo.SaveRelationMap(relationMap, isNew);
@@ -350,6 +363,11 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
 
             // delete nodes before deletiong relation map
             await _repo.DeleteRelationMap(relationMap);
+            // if map contains a browsable PID URI, remove it from the nginx config
+            if (relationMap.PidUri != null)
+            {
+                await _remoteRegistrationService.RemoveSavedMapPidUriFromNginxConfig(relationMap.PidUri);
+            }
             return true;
         }
 
@@ -443,7 +461,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                 }
             }
 
-            resultGraphMap = new GraphMapTO() { Id = relationMap.Id, Name = relationMap.Name, Description = relationMap.Description, ModifiedAt = relationMap.ModifiedAt, ModifiedBy = relationMap.ModifiedBy, Nodes = mapNodeTOList };
+            resultGraphMap = new GraphMapTO() { Id = relationMap.Id, Name = relationMap.Name, Description = relationMap.Description, ModifiedAt = relationMap.ModifiedAt, ModifiedBy = relationMap.ModifiedBy, PidUri = relationMap.PidUri, Nodes = mapNodeTOList };
 
             _logger.LogInformation("Returning processed result {Result}", JsonConvert.SerializeObject(mapNodeTOList));
             return resultGraphMap;
