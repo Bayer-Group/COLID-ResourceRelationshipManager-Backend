@@ -1,12 +1,9 @@
-using COLID.Common.Logger;
 using COLID.Exception;
 using COLID.Identity;
 using COLID.StatisticsLog;
 using COLID.Swagger;
 using COLID.ResourceRelationshipManager.Services;
 using COLID.ResourceRelationshipManager.Repositories;
-using CorrelationId;
-using CorrelationId.DependencyInjection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -48,8 +45,6 @@ namespace COLID.ResourceRelationshipManager
         /// <param name="services"></param>
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDefaultCorrelationId();
-            services.AddCorrelationIdLogger();
             services.AddCors();
             services.AddControllers().AddNewtonsoftJson(
                 opt =>
@@ -87,7 +82,6 @@ namespace COLID.ResourceRelationshipManager
             //Add AzureAD Authentication
             app.UseSqlDatabaseMigration();
             app.UseDeveloperExceptionPage();
-            app.UseCorrelationId();
             app.UseExceptionMiddleware();
             app.UseHttpsRedirection();
             
