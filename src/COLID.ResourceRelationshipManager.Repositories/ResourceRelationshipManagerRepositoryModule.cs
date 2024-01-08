@@ -20,10 +20,11 @@ namespace COLID.ResourceRelationshipManager.Repositories
             var connectionString = BuildConnectionString(configuration);
             services.AddDbContext<ResourceRelationshipManagerContext>(options =>
             {
-                options.UseMySql(connectionString, mysqlOptions =>
+                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mysqlOptions =>
                 {
                     mysqlOptions.CommandTimeout(5);
                     mysqlOptions.EnableRetryOnFailure(3);
+                    mysqlOptions.EnableStringComparisonTranslations();
                 });
             });
 

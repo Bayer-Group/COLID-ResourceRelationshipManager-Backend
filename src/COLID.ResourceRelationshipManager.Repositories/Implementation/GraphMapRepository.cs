@@ -1,5 +1,6 @@
 ﻿using COLID.Exception.Models;
 using COLID.ResourceRelationshipManager.Common.DataModels.Entity;
+using COLID.ResourceRelationshipManager.Common.DataModels.RequestDTOs;
 using COLID.ResourceRelationshipManager.Repositories.Interface;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -27,6 +28,15 @@ namespace COLID.ResourceRelationshipManager.Repositories.Implementation
                 .Take(limit)
                 .ToListAsync();
             return relationMaps;
+        }
+
+        public async Task<IList<MapProxyDTO>> GetAllMapProxyDTOs()
+        {
+            var mapProxyDTOs = await _db.RelationMap
+                .Where(m => m.PidUri != null)
+                .Select(x => new MapProxyDTO(x.Id, x.PidUri))
+                .ToListAsync();
+            return mapProxyDTOs;
         }
 
         public async Task<IList<RelationMap>> GetPageGraphMaps(GraphMapSearchDTO graphMapSearchDTO, int offset)

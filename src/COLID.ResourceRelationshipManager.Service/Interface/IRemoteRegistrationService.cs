@@ -1,6 +1,7 @@
 ﻿using COLID.Graph.Metadata.DataModels.Metadata;
 using COLID.Graph.TripleStore.DataModels.Base;
 using COLID.ResourceRelationshipManager.Common.DataModels;
+using COLID.ResourceRelationshipManager.Common.DataModels.RequestDTOs;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -58,5 +59,19 @@ namespace COLID.ResourceRelationshipManager.Services.Interface
         /// <returns>Dictionary with all possible link types. Key = PID URI of link type, Value = label of that link type.</returns>
         /// <exception cref="System.Exception">In case of errors</exception>
         Task<Dictionary<string, string>> GetLinkTypes();
+
+        /// <summary>
+        /// Register the saved map as a PID URI
+        /// </summary>
+        /// <param name="savedMap"></param>
+        /// <returns>We get the DTO back with the updated PIDURI value</returns>
+        Task<MapProxyDTO> RegisterSavedMap(MapProxyDTO savedMap);
+
+        /// <summary>
+        /// Removes the saved map PID URI from Nginx Config
+        /// </summary>
+        /// <param name="pidUri"></param>
+        /// <returns></returns>
+        Task RemoveSavedMapPidUriFromNginxConfig(string pidUri);
     }
 }

@@ -1,8 +1,7 @@
-using COLID.Identity.Extensions;
+﻿using COLID.Identity.Extensions;
 using COLID.Identity.Services;
 using COLID.ResourceRelationshipManager.Services.Configuration;
 using COLID.ResourceRelationshipManager.Services.Interface;
-using CorrelationId.Abstractions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -22,7 +21,6 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
     public class RemoteSearchService : IRemoteSearchService
     {
         private readonly CancellationToken _cancellationToken;
-        private readonly ICorrelationContextAccessor _correlationContextAccessor;
         private readonly IHttpClientFactory _clientFactory;
         private readonly IConfiguration _configuration;
         private readonly ITokenService<ColidSearchServiceTokenOptions> _tokenService;
@@ -34,14 +32,12 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
             IHttpClientFactory clientFactory,
             IConfiguration configuration,
             IHttpContextAccessor httpContextAccessor,
-            ICorrelationContextAccessor correlationContextAccessor,
             ITokenService<ColidSearchServiceTokenOptions> tokenService,
             ILogger<RemoteSearchService> logger)
         {
             _clientFactory = clientFactory;
             _configuration = configuration;
             _tokenService = tokenService;
-            _correlationContextAccessor = correlationContextAccessor;
             _cancellationToken = httpContextAccessor?.HttpContext?.RequestAborted ?? CancellationToken.None;
             _logger = logger;
             _bypassProxy = _configuration.GetValue<bool>("BypassProxy");
@@ -63,7 +59,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
             {
                 var accessToken = await _tokenService.GetAccessTokenForWebApiAsync();
                 var response = await httpClient.SendRequestWithOptionsAsync(httpMethod, endpointUrl,
-                    requestBody, accessToken, _cancellationToken, _correlationContextAccessor.CorrelationContext);
+                    requestBody, accessToken, _cancellationToken);
                 return response;
             }
             catch (System.Exception ex)
