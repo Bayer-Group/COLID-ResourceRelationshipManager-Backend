@@ -10,6 +10,7 @@ using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -74,33 +75,52 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
         /// <param name="identifiers"></param>
         /// <returns></returns>
         public async Task<IDictionary<string, IEnumerable<JObject>>> GetDocumentsByIds(IEnumerable<string> identifiers)
-        {            
-            using (var client = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
+        {
+            var result = new Dictionary<string, IEnumerable<JObject>>();
+            var chunkSize = 100; // Adjust the chunk size as needed
+            var identifierChunks = identifiers.Select((id, index) => new { id, index })
+                                              .GroupBy(x => x.index / chunkSize)
+                                              .Select(g => g.Select(x => x.id));
+
+            foreach (var chunk in identifierChunks)
             {
-                try
+                using (var client = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
                 {
-                    // Encode the searchRequest into a JSON object for sending
-                    string jsonobject = JsonConvert.SerializeObject(identifiers);
-                    StringContent content = new StringContent(jsonobject, Encoding.UTF8, "application/json");
+                    try
+                    {
+                        string jsonobject = JsonConvert.SerializeObject(chunk);
+                        StringContent content = new StringContent(jsonobject, Encoding.UTF8, "application/json");
 
-                    //Fetch token for search service
-                    var accessToken = await _tokenService.GetAccessTokenForWebApiAsync();
-                    client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                        var accessToken = await _tokenService.GetAccessTokenForWebApiAsync();
+                        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
 
-                    _logger.LogInformation("Sending request to search service to get documents by id: " + JsonConvert.SerializeObject(content) + " and identifiers " + JsonConvert.SerializeObject(identifiers));
-                    // Post the JSON object to the SearchService endpoint
-                    HttpResponseMessage response = await client.PostAsync(SearchService_Document_Api, content);
-                    content.Dispose();
-                    response.EnsureSuccessStatusCode();
-                    var result = JsonConvert.DeserializeObject<IDictionary<string, IEnumerable<JObject>>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
-                    return result;
-                }
-                catch (HttpRequestException ex)
-                {
-                    _logger.LogError("An error occurred while passing the search request to the search service GetDocumentsByIds.", ex);
-                    throw ex;
+                        _logger.LogInformation("Sending request to search service to get documents by id: " + JsonConvert.SerializeObject(content) + " and identifiers " + JsonConvert.SerializeObject(chunk));
+                        HttpResponseMessage response = await client.PostAsync(SearchService_Document_Api, content);
+                        content.Dispose();
+                        response.EnsureSuccessStatusCode();
+                        var chunkResult = JsonConvert.DeserializeObject<IDictionary<string, IEnumerable<JObject>>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
+
+                        foreach (var kvp in chunkResult)
+                        {
+                            if (result.ContainsKey(kvp.Key))
+                            {
+                                result[kvp.Key] = result[kvp.Key].Concat(kvp.Value);
+                            }
+                            else
+                            {
+                                result[kvp.Key] = kvp.Value;
+                            }
+                        }
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        _logger.LogError("An error occurred while passing the search request to the search service GetDocumentsByIds.", ex);
+                        throw;
+                    }
                 }
             }
+
+            return result;
         }
     }
 }

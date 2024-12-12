@@ -110,5 +110,8 @@ namespace COLID.ResourceRelationshipManager.Services.Interface
         /// <param name="uris">List of URIs</param>
         /// <returns>List of Map Node objects</returns>
         Task<List<MapNodeTO>> GetResources(IList<Uri> uris);
+
+        Task<List<MapNodeTO>> GetFilteredResources(LinkResourcesFilterDTO resourceFilterRequest);
+
     }
 }

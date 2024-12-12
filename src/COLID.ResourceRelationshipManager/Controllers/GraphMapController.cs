@@ -4,6 +4,7 @@ using COLID.ResourceRelationshipManager.Common.DataModels;
 using COLID.ResourceRelationshipManager.Common.DataModels.Entity;
 using COLID.ResourceRelationshipManager.Common.DataModels.NewTOs;
 using COLID.ResourceRelationshipManager.Common.DataModels.RequestDTOs;
+using COLID.ResourceRelationshipManager.Common.DataModels.Resource;
 using COLID.ResourceRelationshipManager.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -121,6 +122,7 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
         /// <response code="400">If the resource is not found</response>
         /// <response code="500">If an unexpected error occurs</response>
         [HttpPost("FetchResources")]
+        [RequestSizeLimit(30_000_000)]
         [ProducesResponseType(typeof(List<MapNodeTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(List<MapNodeTO>), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(List<MapNodeTO>), StatusCodes.Status500InternalServerError)]
@@ -297,6 +299,29 @@ namespace COLID.ResourceRelationshipManager.WebApi.Controllers
                 return NotFound();
             }
             return Ok(relationMap);
+        }
+
+        /// <summary>
+        /// Filter and Fetch the resource(s) information
+        /// </summary>
+        /// <param name="resourceUris"></param>
+        /// <returns></returns>
+        /// <response code="200">Returns the resources search for</response>
+        /// <response code="400">If the resource is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [HttpPost("FetchResources/Filter")]
+        [RequestSizeLimit(30_000_000)]
+        [ProducesResponseType(typeof(List<MapNodeTO>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<MapNodeTO>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(List<MapNodeTO>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetFilteredResources(LinkResourcesFilterDTO resourceFilterRequest)
+        {
+            var filteredResources = await _graphMapService.GetFilteredResources(resourceFilterRequest);
+            if (filteredResources?.Count == 0)
+            {
+                return NotFound();
+            }
+            return Ok(filteredResources);
         }
     }
 }

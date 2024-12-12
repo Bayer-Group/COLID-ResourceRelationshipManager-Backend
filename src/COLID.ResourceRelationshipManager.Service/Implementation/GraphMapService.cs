@@ -417,7 +417,7 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
                                 var mapLinksAndTargetDTO = GetMapLinks(data, node.PIDUri.ToString(), resourceName, resourceTypeUri, allLinks);
                                 var hasLaterVersion = data[Graph.Metadata.Constants.Resource.HasLaterVersion] == null ? "" : data[Graph.Metadata.Constants.Resource.HasLaterVersion]["outbound"][0]["value"].ToString();
 
-                                if (!hasLaterVersion.IsNullOrEmpty() && mapLinksAndTargetDTO.TargetURIs.Count > 0)
+                                if (mapLinksAndTargetDTO.TargetURIs.Count > 0)
                                 {
                                     List<TargetDTO> targetNameAndTypeList = GetTargetNameAndTypeFromSearchService(mapLinksAndTargetDTO.TargetURIs).Result;
 
@@ -699,5 +699,50 @@ namespace COLID.ResourceRelationshipManager.Services.Implementation
             string shortName = string.Join("-", segments);
             return shortName;
         }
+
+        public async Task<List<MapNodeTO>> GetFilteredResources(LinkResourcesFilterDTO resourceFilterRequest)
+        {
+            var resources = await GetResources(resourceFilterRequest.PIDUris);
+
+            var filteredResources = new List<MapNodeTO>();
+
+            switch (resourceFilterRequest.FilterType)
+            {
+                case FilterType.LinkType:
+
+                    filteredResources = resources
+                        .Where(resource => resource.Links.Any(link =>
+                            link.LinkType.Key.Equals(resourceFilterRequest.FilterValue, StringComparison.OrdinalIgnoreCase)))
+                        .ToList();
+                    break;
+
+                case FilterType.ResourceType:
+
+                    filteredResources = resources
+                        .Where(resource => resource.ResourceType.Key.Equals(resourceFilterRequest.FilterValue, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                    break;
+
+                case FilterType.Outbound:
+
+                    if (bool.TryParse(resourceFilterRequest.FilterValue, out bool isOutbound))
+                    {
+                        filteredResources = resources
+                            .Where(resource => resource.Links.Any(link => link.Outbound == isOutbound))
+                            .ToList();
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Invalid value for Outbound filter. Must be 'true' or 'false'.");
+                    }
+                    break;
+
+                default:
+                    throw new ArgumentException("Invalid FilterType");
+            }
+
+            return filteredResources;
+        }
+
     }
 }
